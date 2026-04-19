@@ -14,3 +14,5 @@ polygon = PackedVector2Array(0, 0, 368, 0, 368, 240, 0, 240)
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(40, 150)
+
+[node name="Music" type="AudioStreamPlayer" parent="."]

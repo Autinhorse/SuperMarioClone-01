@@ -6,6 +6,7 @@ const TILE_SIZE := 16
 @onready var level_root: Node2D = $Level
 @onready var player: CharacterBody2D = $Player
 @onready var background: Polygon2D = $Background
+@onready var music: AudioStreamPlayer = $Music
 
 func _ready() -> void:
 	var path: String = GameState.selected_level_json
@@ -38,6 +39,20 @@ func _load_level(json_path: String) -> void:
 	var grid_size: Vector2i = LevelRenderer.render_area(level_root, csv_path, map_style)
 	_apply_camera_limits(grid_size)
 	_resize_background(grid_size)
+	_play_music(data.get("music", ""))
+
+func _play_music(music_name: String) -> void:
+	if music_name.is_empty():
+		return
+	var path := "res://Sound/" + music_name
+	if not ResourceLoader.exists(path):
+		push_warning("Music not found: %s" % path)
+		return
+	var stream := load(path) as AudioStream
+	if stream == null:
+		return
+	music.stream = stream
+	music.play()
 
 func _apply_camera_limits(grid_size: Vector2i) -> void:
 	var cam := player.get_node_or_null("Camera2D") as Camera2D
