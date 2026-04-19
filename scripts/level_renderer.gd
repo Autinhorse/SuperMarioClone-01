@@ -12,7 +12,9 @@ static var _current_csv_path: String = ""
 static func render_area(parent: Node, csv_path: String, map_style: int) -> Vector2i:
 	_ensure_configs()
 	_current_csv_path = csv_path
+	print("[lr] render_area start csv=", csv_path, " catalog_size=", _catalog.size(), " visuals_size=", _visuals.size())
 	var grid := _parse_csv(csv_path)
+	print("[lr] grid rows=", grid.size(), " first_row_cols=", (grid[0].size() if grid.size() > 0 else 0))
 	var max_cols := 0
 	for row_idx in grid.size():
 		var row: Array = grid[row_idx]

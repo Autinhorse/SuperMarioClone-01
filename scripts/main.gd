@@ -20,6 +20,7 @@ func _ready() -> void:
 	var path: String = GameState.selected_level_json
 	if path.is_empty():
 		path = DEFAULT_LEVEL
+	print("[main] _ready load_level: ", path)
 	if GameState.spawn_override:
 		player.position = GameState.spawn_position
 		GameState.spawn_override = false
@@ -48,6 +49,7 @@ func _load_level(json_path: String) -> void:
 
 	current_level_dir = json_path.get_base_dir()
 	var csv_path := current_level_dir + "/" + csv_name
+	print("[main] load csv: ", csv_path)
 	_render_area(csv_path, map_style)
 	_play_music(data.get("music", ""))
 
@@ -56,6 +58,7 @@ func _render_area(csv_path: String, map_style: int) -> void:
 	for child in level_root.get_children():
 		child.queue_free()
 	var grid_size: Vector2i = LevelRenderer.render_area(level_root, csv_path, map_style)
+	print("[main] render_area grid_size=", grid_size, " children=", level_root.get_child_count())
 	_apply_camera_limits(grid_size)
 	_resize_background(grid_size)
 
