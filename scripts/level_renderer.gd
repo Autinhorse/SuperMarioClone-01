@@ -33,7 +33,7 @@ static func _ensure_configs() -> void:
 static func _parse_csv(path: String) -> Array:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		push_error("Cannot open CSV: %s" % path)
+		push_error("Cannot open CSV: %s (err=%s, exists=%s)" % [path, FileAccess.get_open_error(), ResourceLoader.exists(path)])
 		return []
 	var grid: Array = []
 	while not file.eof_reached():
