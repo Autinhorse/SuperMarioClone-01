@@ -11,14 +11,21 @@ config_version=5
 [application]
 
 config/name="Super Mario Clone"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/start_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
+
+[autoload]
+
+GameState="*res://scripts/game_state.gd"
 
 [display]
 
-window/size/viewport_width=640
-window/size/viewport_height=360
+window/size/viewport_width=368
+window/size/viewport_height=240
+window/size/window_width_override=736
+window/size/window_height_override=480
 window/stretch/mode="viewport"
+window/stretch/aspect="keep"
 
 [editor]
 
@@ -50,3 +57,4 @@ jump={
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

@@ -1,32 +1,23 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
-size = Vector2(640, 60)
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main_script"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
 
 [node name="Main" type="Node2D"]
+script = ExtResource("1_main_script")
 
 [node name="Background" type="Polygon2D" parent="."]
 color = Color(0.5, 0.7, 1.0, 1)
-polygon = PackedVector2Array(0, 0, 640, 0, 640, 360, 0, 360)
+polygon = PackedVector2Array(0, 0, 368, 0, 368, 240, 0, 240)
 
-[node name="Ground" type="StaticBody2D" parent="."]
-position = Vector2(320, 330)
+[node name="Level" type="Node2D" parent="."]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
-shape = SubResource("RectangleShape2D_ground")
-
-[node name="Visual" type="Polygon2D" parent="Ground"]
-color = Color(0.5, 0.3, 0.1, 1)
-polygon = PackedVector2Array(-320, -30, 320, -30, 320, 30, -320, 30)
-
-[node name="Player" parent="." instance=ExtResource("1_player")]
-position = Vector2(320, 200)
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(40, 150)
 
 [node name="Hint" type="Label" parent="."]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 500.0
-offset_bottom = 40.0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 360.0
+offset_bottom = 20.0
 text = "Move: Arrow / A D    Jump: Space / W / Up"

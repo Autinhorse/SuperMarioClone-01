@@ -1,0 +1,12 @@
+{
+  "1":  { "name": "ground",    "solid": true,  "breakable": false },
+  "2":  { "name": "brick",     "solid": true,  "breakable": true  },
+  "3":  { "name": "question",  "solid": true,  "breakable": false },
+  "4":  { "name": "pipe_tl",   "solid": true,  "breakable": false },
+  "5":  { "name": "pipe_tr",   "solid": true,  "breakable": false },
+  "6":  { "name": "pipe_bl",   "solid": true,  "breakable": false },
+  "7":  { "name": "pipe_br",   "solid": true,  "breakable": false },
+  "20": { "name": "cloud",     "solid": false },
+  "21": { "name": "bush",      "solid": false },
+  "22": { "name": "hill",      "solid": false }
+}
