@@ -3,6 +3,7 @@ extends CharacterBody2D
 const SPEED := 100.0
 const JUMP_VELOCITY := -270.0
 const GRAVITY := 490.0
+const FALL_DEATH_Y := 320.0
 
 @export_file("*.json") var character_json_path: String = "res://characters/mario.json"
 
@@ -11,8 +12,10 @@ const GRAVITY := 490.0
 
 var char_data: CharacterLoader.CharacterData
 var current_form: String = ""
+var spawn_position: Vector2
 
 func _ready() -> void:
+	spawn_position = position
 	char_data = CharacterLoader.load_from_json(character_json_path)
 	if char_data != null:
 		set_form(char_data.default_form)
@@ -60,6 +63,10 @@ func _physics_process(delta: float) -> void:
 
 	_update_animation()
 	move_and_slide()
+
+	if position.y > FALL_DEATH_Y:
+		position = spawn_position
+		velocity = Vector2.ZERO
 
 func _update_animation() -> void:
 	if sprite.sprite_frames == null:

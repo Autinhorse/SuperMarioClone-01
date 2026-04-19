@@ -107,8 +107,17 @@ static func _palette_color(name: String) -> Color:
 		"hill":     return Color(0.25, 0.55, 0.2)
 	return Color(0.9, 0.1, 0.9)
 
+const GOOMBA_SCENE := preload("res://scenes/goomba.tscn")
+
 static func _spawn_complex(parent: Node, spec: String, px: Vector2, col: int, row: int, map_style: int) -> void:
-	print("[LevelRenderer] complex entry '%s' at tile (%d,%d) style=%d — not yet handled" % [spec, col, row, map_style])
+	var entity: String = spec.substr(1)
+	match entity:
+		"goomba":
+			var goomba := GOOMBA_SCENE.instantiate()
+			goomba.position = px + Vector2(TILE_SIZE / 2.0, TILE_SIZE)
+			parent.add_child(goomba)
+		_:
+			print("[LevelRenderer] unknown entity '%s' at (%d,%d) style=%d" % [spec, col, row, map_style])
 
 static func _load_json(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
