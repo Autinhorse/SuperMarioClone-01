@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://cdddno17yy273"]
+
+[ext_resource type="Script" path="res://scripts/turtle.gd" id="1_script"]
+
+[node name="Turtle" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_script")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]

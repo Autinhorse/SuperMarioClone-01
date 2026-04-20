@@ -9,11 +9,13 @@ static var _visuals: Dictionary = {}
 static var _configs_loaded: bool = false
 static var _current_csv_path: String = ""
 static var _current_area_index: int = 0
+static var _current_map_style: int = 0
 
 static func render_area(parent: Node, csv_path: String, map_style: int, area_index: int = 0) -> Vector2i:
 	_ensure_configs()
 	_current_csv_path = csv_path
 	_current_area_index = area_index
+	_current_map_style = map_style
 	print("[lr] render_area start csv=", csv_path, " catalog_size=", _catalog.size(), " visuals_size=", _visuals.size())
 	var grid := _parse_csv(csv_path)
 	print("[lr] grid rows=", grid.size(), " first_row_cols=", (grid[0].size() if grid.size() > 0 else 0))
@@ -93,6 +95,12 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 		parent.add_child(goomba)
 		return
 
+	if str(meta.get("name", "")) == "turtle":
+		var turtle := TURTLE_SCENE.instantiate()
+		turtle.position = px + Vector2(TILE_SIZE / 2.0, TILE_SIZE)
+		parent.add_child(turtle)
+		return
+
 	if str(meta.get("name", "")) == "middle_point":
 		if GameState.is_consumed(_current_csv_path, col, row):
 			return
@@ -146,6 +154,10 @@ static func _spawn_brick_block(parent: Node, id_str: String, px: Vector2, col: i
 	block.set_texture(_load_tile_texture(id_str, map_style, meta))
 	parent.add_child(block)
 
+static func get_tile_texture(id_str: String, map_style: int) -> Texture2D:
+	_ensure_configs()
+	return _load_tile_texture(id_str, map_style, _catalog.get(id_str, {}))
+
 static func _load_tile_texture(id_str: String, map_style: int, meta: Dictionary) -> Texture2D:
 	var visuals: Dictionary = _visuals.get(id_str, {})
 	var tex_path: String = str(visuals.get(str(map_style), ""))
@@ -178,6 +190,7 @@ static func _palette_color(name: String) -> Color:
 	return Color(0.9, 0.1, 0.9)
 
 const GOOMBA_SCENE := preload("res://scenes/goomba.tscn")
+const TURTLE_SCENE := preload("res://scenes/turtle.tscn")
 const QUESTION_BLOCK_SCENE := preload("res://scenes/question_block.tscn")
 const BRICK_BLOCK_SCENE := preload("res://scenes/brick_block.tscn")
 const END_FLAG_SCENE := preload("res://scenes/end_flag.tscn")
@@ -282,6 +295,7 @@ static func _spawn_question_block(parent: Node, px: Vector2, contents: QuestionB
 	block.csv_path = _current_csv_path
 	block.col = col
 	block.row = row
+	block.map_style = _current_map_style
 	block.start_depleted = GameState.is_consumed(_current_csv_path, col, row)
 	parent.add_child(block)
 

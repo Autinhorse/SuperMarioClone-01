@@ -98,4 +98,6 @@ static func _pick_color(char_name: String, form_name: String) -> Color:
 			"fire":  return Color(1.0, 0.95, 0.7)
 	elif char_name == "goomba":
 		return Color(0.5, 0.3, 0.1)
+	elif char_name == "turtle":
+		return Color(0.2, 0.7, 0.2)
 	return Color(0.5, 0.5, 0.5)

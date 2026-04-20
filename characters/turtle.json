@@ -1,0 +1,15 @@
+{
+  "name": "turtle",
+  "defaultForm": "default",
+  "forms": {
+    "default": {
+      "spritesPath": "res://sprites/turtle",
+      "collision": { "width": 14, "height": 16 },
+      "animations": {
+        "walk":  { "frames": 2, "fps": 5, "loop": true  },
+        "shell": { "frames": 1, "fps": 1, "loop": false },
+        "dead":  { "frames": 1, "fps": 1, "loop": false }
+      }
+    }
+  }
+}

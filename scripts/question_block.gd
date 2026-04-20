@@ -4,9 +4,6 @@ extends StaticBody2D
 enum Contents { COIN, POWERUP, STAR }
 enum Style { QUESTION, BRICK, HIDDEN }
 
-const QUESTION_TEX := preload("res://sprites/tiles/overworld/question.png")
-const BRICK_TEX := preload("res://sprites/tiles/overworld/brick.png")
-const FIXED_TEX := preload("res://sprites/tiles/overworld/fixed.png")
 const COIN_SCENE := preload("res://scenes/coin.tscn")
 const MUSHROOM_SCENE := preload("res://scenes/mushroom.tscn")
 const FIRE_FLOWER_SCENE := preload("res://scenes/fire_flower.tscn")
@@ -28,13 +25,20 @@ var start_depleted: bool = false
 var csv_path: String = ""
 var col: int = 0
 var row: int = 0
+var map_style: int = 0
+var question_tex: Texture2D = null
+var brick_tex: Texture2D = null
+var fixed_tex: Texture2D = null
 
 func _ready() -> void:
+	question_tex = LevelRenderer.get_tile_texture("3", map_style)
+	brick_tex = LevelRenderer.get_tile_texture("2", map_style)
+	fixed_tex = LevelRenderer.get_tile_texture("fixed", map_style)
 	match style:
 		Style.QUESTION, Style.HIDDEN:
-			sprite.texture = QUESTION_TEX
+			sprite.texture = question_tex
 		Style.BRICK:
-			sprite.texture = BRICK_TEX
+			sprite.texture = brick_tex
 
 	if style == Style.HIDDEN and not start_depleted:
 		sprite.visible = false
@@ -120,7 +124,7 @@ func _spawn_star() -> void:
 
 func _deplete() -> void:
 	depleted = true
-	sprite.texture = FIXED_TEX
+	sprite.texture = fixed_tex
 	sprite.visible = true
 	shape_node.set_deferred("disabled", false)
 	if hit_area != null:

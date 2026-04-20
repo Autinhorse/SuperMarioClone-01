@@ -14,6 +14,9 @@
     "0": "res://sprites/tiles/overworld/question.png",
     "1": "res://sprites/tiles/underground/question.png"
   },
+  "fixed": {
+    "0": "res://sprites/tiles/overworld/fixed.png"
+  },
   "4":  { "0": "res://sprites/tiles/overworld/pipe_up_tl.png" },
   "5":  { "0": "res://sprites/tiles/overworld/pipe_up_tr.png" },
   "6":  { "0": "res://sprites/tiles/overworld/pipe_up_bl.png" },
@@ -52,5 +55,6 @@
   "39": { "0": "res://sprites/tiles/overworld/pipe_cross_tl.png" },
   "40": { "0": "res://sprites/tiles/overworld/pipe_cross_tr.png" },
   "41": { "0": "res://sprites/tiles/overworld/pipe_cross_bl.png" },
-  "42": { "0": "res://sprites/tiles/overworld/pipe_cross_br.png" }
+  "42": { "0": "res://sprites/tiles/overworld/pipe_cross_br.png" },
+  "43": { "0": "res://sprites/tiles/overworld/stone.png" }
 }
