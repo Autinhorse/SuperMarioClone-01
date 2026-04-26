@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cwha3pbvkw77"
-path="res://.godot/imported/jump_0.png-c242fe225f379dbb50e1eee134fc98a0.ctex"
+path="res://.godot/imported/jump_0.png-06048412688efc6aa7f47ed914ad8bf6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/mario/small/jump_0.png"
-dest_files=["res://.godot/imported/jump_0.png-c242fe225f379dbb50e1eee134fc98a0.ctex"]
+source_file="res://sprites/mario-world/player/small/jump_0.png"
+dest_files=["res://.godot/imported/jump_0.png-06048412688efc6aa7f47ed914ad8bf6.ctex"]
 
 [params]
 

@@ -12,7 +12,11 @@ const STAR_SCENE := preload("res://scenes/star.tscn")
 const BUMP_HEIGHT := 24.0
 const BUMP_TIME := 0.08
 
-@onready var sprite: Sprite2D = $Sprite2D
+const ID_QUESTION := "3"
+const ID_BRICK := "2"
+const ID_FIXED := "fixed"
+
+@onready var visual: Node2D = $Visual
 @onready var shape_node: CollisionShape2D = $CollisionShape2D
 @onready var hit_area: Area2D = $HitArea
 
@@ -26,28 +30,32 @@ var csv_path: String = ""
 var col: int = 0
 var row: int = 0
 var map_style: int = 0
-var question_tex: Texture2D = null
-var brick_tex: Texture2D = null
-var fixed_tex: Texture2D = null
+var visual_node: Node2D = null
 
 func _ready() -> void:
-	question_tex = LevelRenderer.get_tile_texture("3", map_style)
-	brick_tex = LevelRenderer.get_tile_texture("2", map_style)
-	fixed_tex = LevelRenderer.get_tile_texture("fixed", map_style)
-	match style:
-		Style.QUESTION, Style.HIDDEN:
-			sprite.texture = question_tex
-		Style.BRICK:
-			sprite.texture = brick_tex
+	_set_visual(_id_for_idle_state())
 
 	if style == Style.HIDDEN and not start_depleted:
-		sprite.visible = false
+		visual.visible = false
 		shape_node.set_deferred("disabled", true)
 		hit_area.monitoring = true
 		hit_area.body_entered.connect(_on_hit_area_body_entered)
 
 	if start_depleted:
 		_deplete()
+
+func _id_for_idle_state() -> String:
+	match style:
+		Style.BRICK:
+			return ID_BRICK
+		_:
+			return ID_QUESTION
+
+func _set_visual(id_str: String) -> void:
+	if visual_node != null:
+		visual_node.queue_free()
+	visual_node = LevelRenderer.create_tile_visual(id_str, map_style)
+	visual.add_child(visual_node)
 
 func _on_hit_area_body_entered(body: Node) -> void:
 	if revealed or depleted:
@@ -60,7 +68,7 @@ func _on_hit_area_body_entered(body: Node) -> void:
 
 func _reveal(player: Player) -> void:
 	revealed = true
-	sprite.visible = true
+	visual.visible = true
 	shape_node.set_deferred("disabled", false)
 	hit_area.monitoring = false
 	hit(player)
@@ -85,8 +93,8 @@ func hit(player: Player) -> void:
 func _bump() -> void:
 	_kill_enemies_above(self)
 	var tween := create_tween()
-	tween.tween_property(sprite, "position:y", -BUMP_HEIGHT, BUMP_TIME)
-	tween.tween_property(sprite, "position:y", 0.0, BUMP_TIME)
+	tween.tween_property(visual, "position:y", -BUMP_HEIGHT, BUMP_TIME)
+	tween.tween_property(visual, "position:y", 0.0, BUMP_TIME)
 
 static func _kill_enemies_above(block: Node2D) -> void:
 	var space := block.get_world_2d().direct_space_state
@@ -124,8 +132,8 @@ func _spawn_star() -> void:
 
 func _deplete() -> void:
 	depleted = true
-	sprite.texture = fixed_tex
-	sprite.visible = true
+	_set_visual(ID_FIXED)
+	visual.visible = true
 	shape_node.set_deferred("disabled", false)
 	if hit_area != null:
 		hit_area.monitoring = false

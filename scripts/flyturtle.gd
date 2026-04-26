@@ -5,7 +5,7 @@ const AVG_SPEED := 160.0
 const ACTIVATION_MARGIN := 192.0
 const FRAME_COUNT := 2
 const FPS := 5.0
-const SPRITE_DIR := "res://sprites/turtle"
+const SPRITE_DIR := "turtle"
 const TURTLE_SCENE := preload("res://scenes/turtle.tscn")
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
@@ -88,7 +88,7 @@ func _build_frames() -> SpriteFrames:
 	var textures: Array[Texture2D] = []
 	var any_real := false
 	for i in FRAME_COUNT:
-		var path := "%s/flyturtle-%d.png" % [SPRITE_DIR, i]
+		var path := ArtStyle.path("%s/flyturtle-%d.png" % [SPRITE_DIR, i])
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D

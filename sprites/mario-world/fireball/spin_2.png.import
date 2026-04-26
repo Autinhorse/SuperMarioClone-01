@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://diieohpat1lds"
-path="res://.godot/imported/spin_2.png-6730dffd9af72a5814633112f62fe950.ctex"
+path="res://.godot/imported/spin_2.png-00f4adf66225a9a3c63dfde856488903.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/fireball/spin_2.png"
-dest_files=["res://.godot/imported/spin_2.png-6730dffd9af72a5814633112f62fe950.ctex"]
+source_file="res://sprites/mario-world/fireball/spin_2.png"
+dest_files=["res://.godot/imported/spin_2.png-00f4adf66225a9a3c63dfde856488903.ctex"]
 
 [params]
 

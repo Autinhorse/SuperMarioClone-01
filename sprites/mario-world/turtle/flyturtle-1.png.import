@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3riwf21ca2mm"
-path="res://.godot/imported/flyturtle-1.png-3f011de3e9a4529fd656e2d029b76761.ctex"
+path="res://.godot/imported/flyturtle-1.png-b280ebccd5faddc969d4ede3f285195f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/turtle/flyturtle-1.png"
-dest_files=["res://.godot/imported/flyturtle-1.png-3f011de3e9a4529fd656e2d029b76761.ctex"]
+source_file="res://sprites/mario-world/turtle/flyturtle-1.png"
+dest_files=["res://.godot/imported/flyturtle-1.png-b280ebccd5faddc969d4ede3f285195f.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dgk8fmcufbr6a"
-path="res://.godot/imported/shell_0.png-703dbeeca07dae63a2ffefe5856e438a.ctex"
+path="res://.godot/imported/shell_0.png-173c46809e6668a991625eb39e75c8f8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/turtle/shell_0.png"
-dest_files=["res://.godot/imported/shell_0.png-703dbeeca07dae63a2ffefe5856e438a.ctex"]
+source_file="res://sprites/mario-world/turtle/shell_0.png"
+dest_files=["res://.godot/imported/shell_0.png-173c46809e6668a991625eb39e75c8f8.ctex"]
 
 [params]
 

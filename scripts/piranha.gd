@@ -15,7 +15,7 @@ const PLAYER_AVOID_Y := 192.0
 const ACTIVATION_MARGIN := 192.0
 const FRAME_COUNT := 2
 const FPS := 3.0
-const SPRITE_DIR := "res://sprites/piranha"
+const SPRITE_DIR := "piranha"
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var area: Area2D = $Area2D
@@ -124,7 +124,7 @@ static func _build_frames(prefix: String = "piranha") -> SpriteFrames:
 	var textures: Array[Texture2D] = []
 	var any_real := false
 	for i in FRAME_COUNT:
-		var path := "%s/%s_%d.png" % [SPRITE_DIR, prefix, i]
+		var path := ArtStyle.path("%s/%s_%d.png" % [SPRITE_DIR, prefix, i])
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D

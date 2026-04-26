@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://i70d2vft7b63"
-path="res://.godot/imported/die_0.png-daa427277c2603d4260c6fa24df7297e.ctex"
+path="res://.godot/imported/die_0.png-804cf63ef81882f219cd8414d04caf5b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/mario/fire/die_0.png"
-dest_files=["res://.godot/imported/die_0.png-daa427277c2603d4260c6fa24df7297e.ctex"]
+source_file="res://sprites/mario-world/player/fire/die_0.png"
+dest_files=["res://.godot/imported/die_0.png-804cf63ef81882f219cd8414d04caf5b.ctex"]
 
 [params]
 

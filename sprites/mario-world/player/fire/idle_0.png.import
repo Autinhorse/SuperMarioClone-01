@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b1i5ll85ue415"
-path="res://.godot/imported/idle_0.png-29895aaff6d9cf30b8f10cddadd06495.ctex"
+path="res://.godot/imported/idle_0.png-1a86cceb48cbb927982be0f323e9e5a3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/mario/fire/idle_0.png"
-dest_files=["res://.godot/imported/idle_0.png-29895aaff6d9cf30b8f10cddadd06495.ctex"]
+source_file="res://sprites/mario-world/player/fire/idle_0.png"
+dest_files=["res://.godot/imported/idle_0.png-1a86cceb48cbb927982be0f323e9e5a3.ctex"]
 
 [params]
 

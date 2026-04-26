@@ -1,9 +1,9 @@
 {
-  "name": "mario",
+  "name": "player",
   "defaultForm": "small",
   "forms": {
     "small": {
-      "spritesPath": "res://sprites/mario/small",
+      "spritesPath": "player/small",
       "collision": { "width": 56, "height": 56 },
       "animations": {
         "idle": { "frames": 1, "fps": 1,  "loop": false },
@@ -15,7 +15,7 @@
       }
     },
     "big": {
-      "spritesPath": "res://sprites/mario/big",
+      "spritesPath": "player/big",
       "collision": { "width": 56, "height": 120 },
       "animations": {
         "idle":   { "frames": 1, "fps": 1,  "loop": false },
@@ -27,7 +27,7 @@
       }
     },
     "fire": {
-      "spritesPath": "res://sprites/mario/fire",
+      "spritesPath": "player/fire",
       "collision": { "width": 56, "height": 120 },
       "animations": {
         "idle":   { "frames": 1, "fps": 1,  "loop": false },

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://wgiocgunwiln"
-path="res://.godot/imported/explode_0.png-db73d5022bbb6514ea5aa327ff47d5da.ctex"
+path="res://.godot/imported/explode_0.png-30761cf2ec3dad5e14099d4da145739f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/fireball/explode_0.png"
-dest_files=["res://.godot/imported/explode_0.png-db73d5022bbb6514ea5aa327ff47d5da.ctex"]
+source_file="res://sprites/mario-world/fireball/explode_0.png"
+dest_files=["res://.godot/imported/explode_0.png-30761cf2ec3dad5e14099d4da145739f.ctex"]
 
 [params]
 

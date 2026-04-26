@@ -54,7 +54,7 @@ static func _build_form(char_name: String, form_name: String, form_json: Diction
 		var textures: Array[Texture2D] = []
 		var any_real := false
 		for i in range(frame_count):
-			var tex_path := "%s/%s_%d.png" % [sprites_path, anim_name, i]
+			var tex_path := ArtStyle.path("%s/%s_%d.png" % [sprites_path, anim_name, i])
 			var tex: Texture2D = null
 			if ResourceLoader.exists(tex_path):
 				tex = load(tex_path) as Texture2D
@@ -91,7 +91,7 @@ static func _placeholder(char_name: String, form_name: String, frame_idx: int, s
 	return ImageTexture.create_from_image(img)
 
 static func _pick_color(char_name: String, form_name: String) -> Color:
-	if char_name == "mario":
+	if char_name == "player":
 		match form_name:
 			"small": return Color(0.9, 0.2, 0.2)
 			"big":   return Color(0.95, 0.5, 0.2)

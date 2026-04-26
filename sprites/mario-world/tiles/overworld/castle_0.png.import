@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dmrukdyoynsap"
-path="res://.godot/imported/castle_0.png-d289d8d73aa8e2c721f3120b3c28f0f2.ctex"
+path="res://.godot/imported/castle_0.png-a88c53070ae8ed308b3f2b49d207d779.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/castle_0.png"
-dest_files=["res://.godot/imported/castle_0.png-d289d8d73aa8e2c721f3120b3c28f0f2.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/castle_0.png"
+dest_files=["res://.godot/imported/castle_0.png-a88c53070ae8ed308b3f2b49d207d779.ctex"]
 
 [params]
 

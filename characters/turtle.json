@@ -3,7 +3,7 @@
   "defaultForm": "default",
   "forms": {
     "default": {
-      "spritesPath": "res://sprites/turtle",
+      "spritesPath": "turtle",
       "collision": { "width": 56, "height": 56 },
       "animations": {
         "walk":  { "frames": 2, "fps": 5, "loop": true  },

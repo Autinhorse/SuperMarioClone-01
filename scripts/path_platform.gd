@@ -4,7 +4,7 @@ extends AnimatableBody2D
 const AVG_SPEED := 160.0
 const TILE_SIZE := 64
 const THICKNESS := 32
-const SPRITE_PATH := "res://sprites/platform/platform.png"
+const SPRITE_PATH := "platform/platform.png"
 
 @export var length_tiles: int = 3
 @export var point_a: Vector2 = Vector2.ZERO
@@ -42,8 +42,9 @@ func _physics_process(delta: float) -> void:
 	position = point_a.lerp(point_b, t)
 
 func _load_tile_texture() -> Texture2D:
-	if ResourceLoader.exists(SPRITE_PATH):
-		var t := load(SPRITE_PATH) as Texture2D
+	var path := ArtStyle.path(SPRITE_PATH)
+	if ResourceLoader.exists(path):
+		var t := load(path) as Texture2D
 		if t != null:
 			return t
 	return _placeholder_texture()

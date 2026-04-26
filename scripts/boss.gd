@@ -11,7 +11,7 @@ const GRAVITY := 1960.0
 const DEAD_Y := 1600.0
 const FRAME_COUNT := 2
 const FPS := 3.0
-const SPRITE_DIR := "res://sprites/boss"
+const SPRITE_DIR := "boss"
 const BOSSFIRE_SCENE := preload("res://scenes/bossfire.tscn")
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
@@ -116,7 +116,7 @@ func _build_frames() -> SpriteFrames:
 	var textures: Array[Texture2D] = []
 	var any_real := false
 	for i in FRAME_COUNT:
-		var path := "%s/boss-%d.png" % [SPRITE_DIR, i]
+		var path := ArtStyle.path("%s/boss-%d.png" % [SPRITE_DIR, i])
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D

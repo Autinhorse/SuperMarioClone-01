@@ -13,7 +13,7 @@ const DEATH_EXIT_Y := 1680.0
 const MAX_FIREBALLS := 2
 const FIREBALL_SCENE := preload("res://scenes/fireball.tscn")
 
-@export_file("*.json") var character_json_path: String = "res://characters/mario.json"
+@export_file("*.json") var character_json_path: String = "res://characters/player.json"
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var collision: CollisionShape2D = $CollisionShape2D

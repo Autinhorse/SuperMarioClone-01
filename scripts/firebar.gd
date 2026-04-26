@@ -8,8 +8,8 @@ const ROT_SPEED := PI / 2.0
 const FIRE_RADIUS := 16.0
 const FPS := 12.0
 const SPIN_FRAMES := 4
-const FIRE_SPRITE_DIR := "res://sprites/fireball"
-const BASE_SPRITE_PATH := "res://sprites/tiles/overworld/fixed.png"
+const FIRE_SPRITE_DIR := "fireball"
+const BASE_SPRITE_PATH := "tiles/overworld/fixed.png"
 
 @export var length: int = 5
 @export var clockwise: bool = true
@@ -47,8 +47,9 @@ func _ready() -> void:
 
 func _build_base() -> void:
 	var base_sprite := Sprite2D.new()
-	if ResourceLoader.exists(BASE_SPRITE_PATH):
-		base_sprite.texture = load(BASE_SPRITE_PATH)
+	var base_path := ArtStyle.path(BASE_SPRITE_PATH)
+	if ResourceLoader.exists(base_path):
+		base_sprite.texture = load(base_path)
 	add_child(base_sprite)
 
 	var body := StaticBody2D.new()
@@ -96,7 +97,7 @@ func _build_fire_frames() -> SpriteFrames:
 	var textures: Array[Texture2D] = []
 	var any_real := false
 	for i in SPIN_FRAMES:
-		var path := "%s/spin_%d.png" % [FIRE_SPRITE_DIR, i]
+		var path := ArtStyle.path("%s/spin_%d.png" % [FIRE_SPRITE_DIR, i])
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b43p5kgdkk6j"
-path="res://.godot/imported/explode_1.png-13997864e20b8f0800d3bf99901667a7.ctex"
+path="res://.godot/imported/explode_1.png-83f03fa889b6231bc07f26e305dc2ef7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/fireball/explode_1.png"
-dest_files=["res://.godot/imported/explode_1.png-13997864e20b8f0800d3bf99901667a7.ctex"]
+source_file="res://sprites/mario-world/fireball/explode_1.png"
+dest_files=["res://.godot/imported/explode_1.png-83f03fa889b6231bc07f26e305dc2ef7.ctex"]
 
 [params]
 

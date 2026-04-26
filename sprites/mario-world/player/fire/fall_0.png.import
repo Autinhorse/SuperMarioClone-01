@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dbp4ifxtxjebh"
-path="res://.godot/imported/fall_0.png-159e5fcba23ffb6e3e4da7fed9d4bb77.ctex"
+path="res://.godot/imported/fall_0.png-83da06fc258f34808d0953bcb685d3a8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/mario/fire/fall_0.png"
-dest_files=["res://.godot/imported/fall_0.png-159e5fcba23ffb6e3e4da7fed9d4bb77.ctex"]
+source_file="res://sprites/mario-world/player/fire/fall_0.png"
+dest_files=["res://.godot/imported/fall_0.png-83da06fc258f34808d0953bcb685d3a8.ctex"]
 
 [params]
 

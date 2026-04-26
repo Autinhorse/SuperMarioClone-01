@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cq0p58ylutwxi"
-path="res://.godot/imported/pipe_right_tl.png-7d9f1d6f9b2aac8feddfa21af47d6303.ctex"
+path="res://.godot/imported/pipe_right_tl.png-b1badf94e139f8db58090d4aec28d521.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/pipe_right_tl.png"
-dest_files=["res://.godot/imported/pipe_right_tl.png-7d9f1d6f9b2aac8feddfa21af47d6303.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/pipe_right_tl.png"
+dest_files=["res://.godot/imported/pipe_right_tl.png-b1badf94e139f8db58090d4aec28d521.ctex"]
 
 [params]
 

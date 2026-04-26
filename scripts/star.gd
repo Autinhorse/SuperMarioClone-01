@@ -50,7 +50,7 @@ func _on_body_entered(body: Node) -> void:
 		queue_free()
 
 static func _get_texture() -> Texture2D:
-	var path := "res://sprites/tiles/overworld/star.png"
+	var path := ArtStyle.path("tiles/overworld/star.png")
 	if ResourceLoader.exists(path):
 		return load(path) as Texture2D
 	var img := Image.create(56, 56, false, Image.FORMAT_RGBA8)

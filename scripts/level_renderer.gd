@@ -140,6 +140,7 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 		coin.csv_path = _current_csv_path
 		coin.col = col
 		coin.row = row
+		coin.map_style = map_style
 		parent.add_child(coin)
 		return
 
@@ -175,6 +176,7 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 	if str(meta.get("name", "")) == "princess":
 		var p := PRINCESS_SCENE.instantiate()
 		p.position = px + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+		p.map_style = map_style
 		parent.add_child(p)
 		return
 
@@ -187,6 +189,7 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 		mp.col = col
 		mp.row = row
 		mp.area_index = _current_area_index
+		mp.map_style = map_style
 		parent.add_child(mp)
 		return
 
@@ -204,9 +207,7 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 		"pipe_right_tr", "pipe_right_br":
 			root.set_meta("pipe_dir", "r")
 
-	var sprite := Sprite2D.new()
-	sprite.texture = _load_tile_texture(id_str, map_style, meta)
-	root.add_child(sprite)
+	root.add_child(create_tile_visual(id_str, map_style, meta))
 
 	if bool(meta.get("solid", false)):
 		var body := StaticBody2D.new()
@@ -225,9 +226,7 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 static func _spawn_lava_kill(parent: Node, id_str: String, px: Vector2, map_style: int, meta: Dictionary) -> void:
 	var root := Node2D.new()
 	root.position = px + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
-	var sprite := Sprite2D.new()
-	sprite.texture = _load_tile_texture(id_str, map_style, meta)
-	root.add_child(sprite)
+	root.add_child(create_tile_visual(id_str, map_style, meta))
 	var area := Area2D.new()
 	area.collision_layer = 0
 	area.collision_mask = 2
@@ -252,21 +251,83 @@ static func _spawn_brick_block(parent: Node, id_str: String, px: Vector2, col: i
 	block.csv_path = _current_csv_path
 	block.col = col
 	block.row = row
-	block.set_texture(_load_tile_texture(id_str, map_style, meta))
+	block.map_style = map_style
 	parent.add_child(block)
 
 static func get_tile_texture(id_str: String, map_style: int) -> Texture2D:
 	_ensure_configs()
-	return _load_tile_texture(id_str, map_style, _catalog.get(id_str, {}))
+	var meta: Dictionary = _catalog.get(id_str, {})
+	var desc := _resolve_visual(id_str, map_style, meta)
+	var textures: Array = desc.get("textures", [])
+	if textures.is_empty():
+		return _placeholder_texture(meta)
+	return textures[0]
 
-static func _load_tile_texture(id_str: String, map_style: int, meta: Dictionary) -> Texture2D:
+# Single frame -> Sprite2D. Multiple frames -> AnimatedSprite2D.
+# meta is optional; only used to build a placeholder if the visual is missing.
+static func create_tile_visual(id_str: String, map_style: int, meta: Dictionary = {}) -> Node2D:
+	var desc := _resolve_visual(id_str, map_style, meta)
+	var textures: Array = desc.get("textures", [])
+	if textures.size() <= 1:
+		var sprite := Sprite2D.new()
+		sprite.texture = textures[0] if not textures.is_empty() else _placeholder_texture(meta)
+		return sprite
+
+	var frames := SpriteFrames.new()
+	frames.set_animation_speed("default", float(desc.get("fps", 1.0)))
+	frames.set_animation_loop("default", bool(desc.get("loop", true)))
+	for tex in textures:
+		frames.add_frame("default", tex)
+
+	var anim := AnimatedSprite2D.new()
+	anim.name = "AnimatedSprite2D"
+	anim.sprite_frames = frames
+	anim.autoplay = "default"
+	anim.animation = "default"
+	anim.play("default")
+	return anim
+
+# Resolves a tile visual into a frame list + timing.
+# JSON value can be:
+#   "res://path.png"                                                (single frame, legacy short form)
+#   { "spritesPath": "res://base", "frames": N, "fps": F, "loop": B } (frame i loads from base_i.png)
+static func _resolve_visual(id_str: String, map_style: int, meta: Dictionary) -> Dictionary:
 	var visuals: Dictionary = _visuals.get(id_str, {})
-	var tex_path: String = str(visuals.get(str(map_style), ""))
-	if tex_path == "" or not ResourceLoader.exists(tex_path):
-		tex_path = str(visuals.get("0", ""))
-	if tex_path != "" and ResourceLoader.exists(tex_path):
-		return load(tex_path) as Texture2D
-	return _placeholder_texture(meta)
+	var value = visuals.get(str(map_style), null)
+	if value == null:
+		value = visuals.get("0", null)
+
+	var result := { "textures": [], "fps": 1.0, "loop": true }
+	if value == null:
+		return result
+
+	if typeof(value) == TYPE_STRING:
+		var rel: String = value
+		if rel != "":
+			var path := ArtStyle.path(rel)
+			if ResourceLoader.exists(path):
+				result["textures"] = [load(path) as Texture2D]
+		return result
+
+	if typeof(value) != TYPE_DICTIONARY:
+		return result
+
+	var cfg: Dictionary = value
+	var base: String = str(cfg.get("spritesPath", ""))
+	var frame_count: int = int(cfg.get("frames", 1))
+	result["fps"] = float(cfg.get("fps", 1.0))
+	result["loop"] = bool(cfg.get("loop", true))
+
+	var textures: Array = []
+	for i in range(maxi(frame_count, 1)):
+		var rel := "%s_%d.png" % [base, i]
+		var p := ArtStyle.path(rel)
+		if ResourceLoader.exists(p):
+			textures.append(load(p) as Texture2D)
+		else:
+			push_warning("[lr] missing animation frame: %s (id=%s)" % [p, id_str])
+	result["textures"] = textures
+	return result
 
 static func _placeholder_texture(meta: Dictionary) -> ImageTexture:
 	var img := Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
@@ -332,6 +393,7 @@ static func _spawn_complex(parent: Node, spec: String, px: Vector2, col: int, ro
 	elif entity == "end":
 		var flag := END_FLAG_SCENE.instantiate()
 		flag.position = px + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+		flag.map_style = map_style
 		parent.add_child(flag)
 	elif entity.begins_with("pipe-"):
 		_spawn_pipe_entry(parent, entity.substr(5), px, col, row, map_style)
@@ -359,11 +421,7 @@ static func _spawn_bridgecut(parent: Node, rest: String, col: int, row: int) -> 
 	var target_row := row + dy
 	var root := Node2D.new()
 	root.position = Vector2(col * TILE_SIZE + TILE_SIZE / 2.0, row * TILE_SIZE + TILE_SIZE / 2.0)
-	var sprite_path := "res://sprites/tiles/overworld/bridgecut.png"
-	if ResourceLoader.exists(sprite_path):
-		var sprite := Sprite2D.new()
-		sprite.texture = load(sprite_path) as Texture2D
-		root.add_child(sprite)
+	root.add_child(create_tile_visual("bridgecut", _current_map_style))
 	var area := Area2D.new()
 	area.collision_layer = 0
 	area.collision_mask = 2

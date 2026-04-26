@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbi61vfs1hnnf"
-path="res://.godot/imported/bush.png-4ad40cc6b7c8f24bc62833e761e82979.ctex"
+path="res://.godot/imported/bush.png-6d3ae588bf36e0cd0b3a469550116ca8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/bush.png"
-dest_files=["res://.godot/imported/bush.png-4ad40cc6b7c8f24bc62833e761e82979.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/bush.png"
+dest_files=["res://.godot/imported/bush.png-6d3ae588bf36e0cd0b3a469550116ca8.ctex"]
 
 [params]
 

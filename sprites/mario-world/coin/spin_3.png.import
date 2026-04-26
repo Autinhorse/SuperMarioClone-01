@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bi3cfbr7014o6"
-path="res://.godot/imported/spin_3.png-1a2daf328164f24636ca4db536ee2196.ctex"
+path="res://.godot/imported/spin_3.png-06720d057824ab34386236e26158a527.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/coin/spin_3.png"
-dest_files=["res://.godot/imported/spin_3.png-1a2daf328164f24636ca4db536ee2196.ctex"]
+source_file="res://sprites/mario-world/coin/spin_3.png"
+dest_files=["res://.godot/imported/spin_3.png-06720d057824ab34386236e26158a527.ctex"]
 
 [params]
 

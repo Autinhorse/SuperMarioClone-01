@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6tr8ujfg4brs"
-path="res://.godot/imported/brick.png-979c3a8f79b6028d48c0ec0e4258d058.ctex"
+path="res://.godot/imported/brick.png-13ce2a41f774a8f0b33ae4d6493c6571.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/brick.png"
-dest_files=["res://.godot/imported/brick.png-979c3a8f79b6028d48c0ec0e4258d058.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/brick.png"
+dest_files=["res://.godot/imported/brick.png-13ce2a41f774a8f0b33ae4d6493c6571.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://e0qq5ccdny4s"
-path="res://.godot/imported/lava_top.png-2d98ed734edba94a3fa6d3cf83e4f40d.ctex"
+path="res://.godot/imported/lava_top.png-fa4d2353266047bfb070515a0412a5bd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/lava_top.png"
-dest_files=["res://.godot/imported/lava_top.png-2d98ed734edba94a3fa6d3cf83e4f40d.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/lava_top.png"
+dest_files=["res://.godot/imported/lava_top.png-fa4d2353266047bfb070515a0412a5bd.ctex"]
 
 [params]
 

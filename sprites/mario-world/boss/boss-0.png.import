@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://8yv7bbk82r2s"
-path="res://.godot/imported/boss-0.png-6dbabad0229f321e24c3f1ea94a6fa9b.ctex"
+path="res://.godot/imported/boss-0.png-10797fff3adba3c859c69a0f747102d4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/boss/boss-0.png"
-dest_files=["res://.godot/imported/boss-0.png-6dbabad0229f321e24c3f1ea94a6fa9b.ctex"]
+source_file="res://sprites/mario-world/boss/boss-0.png"
+dest_files=["res://.godot/imported/boss-0.png-10797fff3adba3c859c69a0f747102d4.ctex"]
 
 [params]
 

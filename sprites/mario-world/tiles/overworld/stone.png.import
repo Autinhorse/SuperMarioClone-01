@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bxytwldxfhy8c"
-path="res://.godot/imported/stone.png-83c2e00ae7d92e5606fc71a4a6703851.ctex"
+path="res://.godot/imported/stone.png-fc73042dc48a7bef90bea40c1f1c6561.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/stone.png"
-dest_files=["res://.godot/imported/stone.png-83c2e00ae7d92e5606fc71a4a6703851.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/stone.png"
+dest_files=["res://.godot/imported/stone.png-fc73042dc48a7bef90bea40c1f1c6561.ctex"]
 
 [params]
 

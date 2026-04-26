@@ -2,13 +2,25 @@ extends Node2D
 
 const DEFAULT_LEVEL := "res://levels/SMB1_World01_01.json"
 const TILE_SIZE := 64
+const VIEWPORT_W := 1472.0
+const VIEWPORT_H := 960.0
+const STYLE_DIRS := {
+	0: "overworld",
+	1: "underground",
+	2: "underwater",
+	3: "castle",
+}
 
 @onready var level_root: Node2D = $Level
 @onready var player: CharacterBody2D = $Player
-@onready var background: Polygon2D = $Background
+@onready var bg_image: Sprite2D = $BackgroundLayer/Image
 @onready var music: AudioStreamPlayer = $Music
 @onready var fade_rect: ColorRect = $Overlay/Black
 @onready var coin_label: Label = $HUD/CoinLabel
+
+var _bg_cam_min: float = 0.0
+var _bg_cam_range: float = 1.0
+var _bg_max_offset: float = 0.0
 
 var current_level_dir: String = ""
 var current_map_style: int = 0
@@ -22,6 +34,7 @@ func _enter_tree() -> void:
 
 func _process(_delta: float) -> void:
 	coin_label.text = "COINS: %d" % GameState.coin_count
+	_update_background_position()
 
 func _ready() -> void:
 	print("[main] _ready BEGIN")
@@ -78,20 +91,21 @@ func _load_area(index: int) -> void:
 	var area: Dictionary = current_areas[index]
 	var csv_name: String = area.get("csv", "")
 	var map_style: int = int(area.get("mapStyle", 0))
+	var bg_name: String = str(area.get("background", ""))
 	if csv_name.is_empty():
 		return
 	var csv_path := current_level_dir + "/" + csv_name
 	print("[main] load area index=", index, " csv=", csv_path, " style=", map_style)
-	_render_area(csv_path, map_style, index)
+	_render_area(csv_path, map_style, index, bg_name)
 
-func _render_area(csv_path: String, map_style: int, area_index: int = 0) -> void:
+func _render_area(csv_path: String, map_style: int, area_index: int, bg_name: String) -> void:
 	current_map_style = map_style
 	for child in level_root.get_children():
 		child.queue_free()
 	var grid_size: Vector2i = LevelRenderer.render_area(level_root, csv_path, map_style, area_index)
 	print("[main] render_area grid_size=", grid_size, " children=", level_root.get_child_count())
 	_apply_camera_limits(grid_size)
-	_resize_background(grid_size)
+	_setup_background(bg_name, map_style, grid_size)
 
 func _play_music(music_name: String) -> void:
 	if music_name.is_empty():
@@ -213,9 +227,38 @@ func _apply_camera_limits(grid_size: Vector2i) -> void:
 	cam.limit_right = grid_size.x * TILE_SIZE
 	cam.limit_bottom = grid_size.y * TILE_SIZE
 
-func _resize_background(grid_size: Vector2i) -> void:
-	var w := grid_size.x * TILE_SIZE
-	var h := grid_size.y * TILE_SIZE
-	background.polygon = PackedVector2Array([
-		Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)
-	])
+func _setup_background(bg_name: String, map_style: int, grid_size: Vector2i) -> void:
+	bg_image.visible = false
+	_bg_max_offset = 0.0
+	if bg_name.is_empty():
+		return
+	var dir: String = STYLE_DIRS.get(map_style, "overworld")
+	var path := ArtStyle.path("tiles/%s/%s" % [dir, bg_name])
+	if not ResourceLoader.exists(path):
+		push_warning("Background not found: %s" % path)
+		return
+	var tex := load(path) as Texture2D
+	if tex == null or tex.get_height() <= 0:
+		return
+	var scale_uniform := VIEWPORT_H / float(tex.get_height())
+	bg_image.texture = tex
+	bg_image.scale = Vector2(scale_uniform, scale_uniform)
+	bg_image.position = Vector2.ZERO
+	bg_image.visible = true
+
+	var scaled_w := float(tex.get_width()) * scale_uniform
+	var level_w := float(grid_size.x * TILE_SIZE)
+	_bg_cam_min = VIEWPORT_W / 2.0
+	var cam_max := maxf(_bg_cam_min, level_w - VIEWPORT_W / 2.0)
+	_bg_cam_range = maxf(1.0, cam_max - _bg_cam_min)
+	_bg_max_offset = maxf(0.0, scaled_w - VIEWPORT_W)
+
+func _update_background_position() -> void:
+	if not bg_image.visible or _bg_max_offset <= 0.0:
+		return
+	var cam := player.get_node_or_null("Camera2D") as Camera2D
+	if cam == null:
+		return
+	var cam_x := cam.get_screen_center_position().x
+	var t := clampf((cam_x - _bg_cam_min) / _bg_cam_range, 0.0, 1.0)
+	bg_image.position.x = -t * _bg_max_offset

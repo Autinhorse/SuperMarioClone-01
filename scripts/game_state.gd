@@ -1,5 +1,6 @@
 extends Node
 
+var art_style: String = "sci"
 var selected_level_json: String = ""
 var spawn_override: bool = false
 var spawn_position: Vector2 = Vector2.ZERO

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c37461ut74xtf"
-path="res://.godot/imported/bridgecut.png-1a9ae4bfce92ef8b68cd2d0e3c24076a.ctex"
+path="res://.godot/imported/bridgecut.png-2de1035e3ca22016a9f0e648baccd5ea.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/tiles/overworld/bridgecut.png"
-dest_files=["res://.godot/imported/bridgecut.png-1a9ae4bfce92ef8b68cd2d0e3c24076a.ctex"]
+source_file="res://sprites/mario-world/tiles/overworld/bridgecut.png"
+dest_files=["res://.godot/imported/bridgecut.png-2de1035e3ca22016a9f0e648baccd5ea.ctex"]
 
 [params]
 

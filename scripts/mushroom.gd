@@ -14,7 +14,7 @@ var direction: float = 1.0
 var emerging: bool = true
 
 func _ready() -> void:
-	var tex := load("res://sprites/tiles/overworld/mashroom.png") as Texture2D
+	var tex := load(ArtStyle.path("tiles/overworld/mashroom.png")) as Texture2D
 	if tex != null:
 		sprite.texture = tex
 	collision.disabled = true

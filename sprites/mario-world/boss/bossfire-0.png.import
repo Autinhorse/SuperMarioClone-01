@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cdny7ox3pl46j"
-path="res://.godot/imported/bossfire-0.png-1cc686310f5438cad6cb5270a4d5cc35.ctex"
+path="res://.godot/imported/bossfire-0.png-447c651cc56f6c0907410299495c54e9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/boss/bossfire-0.png"
-dest_files=["res://.godot/imported/bossfire-0.png-1cc686310f5438cad6cb5270a4d5cc35.ctex"]
+source_file="res://sprites/mario-world/boss/bossfire-0.png"
+dest_files=["res://.godot/imported/bossfire-0.png-447c651cc56f6c0907410299495c54e9.ctex"]
 
 [params]
 

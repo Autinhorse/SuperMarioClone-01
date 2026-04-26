@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bgdvt7gerfmd5"
-path="res://.godot/imported/walk_3.png-f819e88c802bc4920035f384b20ae95c.ctex"
+path="res://.godot/imported/walk_3.png-f660902c0d9aeee547c9592d0802a240.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/mario/big/walk_3.png"
-dest_files=["res://.godot/imported/walk_3.png-f819e88c802bc4920035f384b20ae95c.ctex"]
+source_file="res://sprites/mario-world/player/big/walk_3.png"
+dest_files=["res://.godot/imported/walk_3.png-f660902c0d9aeee547c9592d0802a240.ctex"]
 
 [params]
 

@@ -1,24 +1,19 @@
 class_name MapCoin
 extends Area2D
 
-const FRAME_COUNT := 4
-const FPS := 4.0
-const SPRITE_DIR := "res://sprites/coin"
+const TILE_ID := "50"
 
-static var _cached_frames: SpriteFrames = null
-
-@onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
+@onready var visual: Node2D = $Visual
 @onready var sfx: AudioStreamPlayer = $SFX
 
 var collected: bool = false
 var csv_path: String = ""
 var col: int = 0
 var row: int = 0
+var map_style: int = 0
 
 func _ready() -> void:
-	sprite.sprite_frames = _get_frames()
-	if sprite.sprite_frames.has_animation("spin"):
-		sprite.play("spin")
+	visual.add_child(LevelRenderer.create_tile_visual(TILE_ID, map_style))
 	body_entered.connect(_on_body_entered)
 
 func _on_body_entered(body: Node) -> void:
@@ -31,48 +26,7 @@ func _on_body_entered(body: Node) -> void:
 	GameState.mark_consumed(csv_path, col, row)
 	sfx.stream = load("res://Sound/coin.wav") as AudioStream
 	sfx.play()
-	sprite.visible = false
+	visual.visible = false
 	set_deferred("monitoring", false)
 	await get_tree().create_timer(0.3).timeout
 	queue_free()
-
-static func _get_frames() -> SpriteFrames:
-	if _cached_frames != null:
-		return _cached_frames
-	var frames := SpriteFrames.new()
-	frames.add_animation("spin")
-	frames.set_animation_speed("spin", FPS)
-	frames.set_animation_loop("spin", true)
-	var textures: Array[Texture2D] = []
-	var any_real := false
-	for i in FRAME_COUNT:
-		var path := "%s/spin_%d.png" % [SPRITE_DIR, i]
-		var tex: Texture2D = null
-		if ResourceLoader.exists(path):
-			tex = load(path) as Texture2D
-			if tex != null:
-				any_real = true
-		textures.append(tex)
-	var placeholder: Texture2D = null
-	if not any_real:
-		placeholder = _make_placeholder()
-	for i in FRAME_COUNT:
-		var t: Texture2D = textures[i]
-		if t == null:
-			if placeholder == null:
-				placeholder = _make_placeholder()
-			t = placeholder
-		frames.add_frame("spin", t)
-	_cached_frames = frames
-	return frames
-
-static func _make_placeholder() -> ImageTexture:
-	var img := Image.create(32, 48, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	for y in range(48):
-		for x in range(32):
-			var cx := float(x) - 15.5
-			var cy := float(y) - 23.5
-			if cx * cx / 144.0 + cy * cy / 400.0 <= 1.0:
-				img.set_pixel(x, y, Color(1.0, 0.85, 0.15, 1.0))
-	return ImageTexture.create_from_image(img)

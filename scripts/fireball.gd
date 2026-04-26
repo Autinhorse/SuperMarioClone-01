@@ -7,7 +7,7 @@ const BOUNCE_VY := -440.0
 const LIFETIME := 2.0
 const SPIN_FRAMES := 4
 const EXPLODE_FRAMES := 3
-const SPRITE_DIR := "res://sprites/fireball"
+const SPRITE_DIR := "fireball"
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -71,7 +71,7 @@ func _add_anim(frames: SpriteFrames, anim_name: String, count: int, fps: float, 
 	var textures: Array[Texture2D] = []
 	var any_real := false
 	for i in count:
-		var path := "%s/%s_%d.png" % [SPRITE_DIR, anim_name, i]
+		var path := ArtStyle.path("%s/%s_%d.png" % [SPRITE_DIR, anim_name, i])
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D

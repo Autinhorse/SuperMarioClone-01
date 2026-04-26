@@ -8,7 +8,7 @@ const EMERGE_TIME := 0.5
 @onready var pickup_area: Area2D = $PickupArea
 
 func _ready() -> void:
-	var tex := load("res://sprites/tiles/overworld/FireFlower.png") as Texture2D
+	var tex := load(ArtStyle.path("tiles/overworld/FireFlower.png")) as Texture2D
 	if tex != null:
 		sprite.texture = tex
 	pickup_area.monitoring = false

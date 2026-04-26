@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://mr1krh5u2d5w"
-path="res://.godot/imported/piranha_1.png-0b23f52bd27ac615f8238950e9fca5a7.ctex"
+path="res://.godot/imported/piranha_1.png-64d0019ce897fee6ec3285b235e55b85.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/piranha/piranha_1.png"
-dest_files=["res://.godot/imported/piranha_1.png-0b23f52bd27ac615f8238950e9fca5a7.ctex"]
+source_file="res://sprites/mario-world/piranha/piranha_1.png"
+dest_files=["res://.godot/imported/piranha_1.png-64d0019ce897fee6ec3285b235e55b85.ctex"]
 
 [params]
 

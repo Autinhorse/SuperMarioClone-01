@@ -1,20 +1,20 @@
 class_name EndFlag
 extends Node2D
 
-const POLE_TEXTURE := preload("res://sprites/tiles/overworld/end.png")
+const TILE_ID := "end"
 
-@onready var sprite: Sprite2D = $Sprite2D
+@onready var visual: Node2D = $Visual
 @onready var area: Area2D = $Area2D
 @onready var shape: CollisionShape2D = $Area2D/CollisionShape2D
 
+var map_style: int = 0
 var triggered: bool = false
 
 func _ready() -> void:
-	sprite.texture = POLE_TEXTURE
-	var w := float(POLE_TEXTURE.get_width())
-	var h := float(POLE_TEXTURE.get_height())
+	visual.add_child(LevelRenderer.create_tile_visual(TILE_ID, map_style))
+	var tex := LevelRenderer.get_tile_texture(TILE_ID, map_style)
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(w, h)
+	rect.size = Vector2(float(tex.get_width()), float(tex.get_height()))
 	shape.shape = rect
 	shape.position = Vector2(64.0, 0.0)
 	area.body_entered.connect(_on_body_entered)
