@@ -107,6 +107,12 @@ func _physics_process(delta: float) -> void:
 		die()
 		return
 
+	# Prefer a center-aligned head bump: if a Q/B block sits directly above the
+	# player's head center, only that block is hit; corner-side block hits in
+	# the slide loop are filtered out below. If center probe finds nothing,
+	# corner-based slide collisions are used as the fallback (legacy behavior).
+	var head_bump_target: Node = _probe_head_center()
+
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		var other := col.get_collider()
@@ -152,10 +158,10 @@ func _physics_process(delta: float) -> void:
 			take_damage()
 			return
 		elif other is QuestionBlock:
-			if col.get_normal().y > 0.7:
+			if col.get_normal().y > 0.7 and (head_bump_target == null or head_bump_target == other):
 				(other as QuestionBlock).hit(self)
 		elif other is BrickBlock:
-			if col.get_normal().y > 0.7:
+			if col.get_normal().y > 0.7 and (head_bump_target == null or head_bump_target == other):
 				(other as BrickBlock).hit(self)
 
 func _process_death(delta: float) -> void:
@@ -307,6 +313,27 @@ func _exit_crouch() -> void:
 	var form: CharacterLoader.FormData = char_data.forms[current_form]
 	collision.shape = form.shape
 	collision.position = Vector2(0, -form.size.y / 2.0)
+
+# Returns the QuestionBlock or BrickBlock sitting directly above the player's
+# head center, or null if nothing is there.
+func _probe_head_center() -> Node:
+	if collision.shape == null or not (collision.shape is RectangleShape2D):
+		return null
+	var shape_size: Vector2 = (collision.shape as RectangleShape2D).size
+	var head_local_y := -shape_size.y
+	var probe := RectangleShape2D.new()
+	probe.size = Vector2(8.0, 4.0)
+	var params := PhysicsShapeQueryParameters2D.new()
+	params.shape = probe
+	params.transform = Transform2D(0.0, global_position + Vector2(0.0, head_local_y - 2.0))
+	params.collision_mask = 1
+	params.exclude = [self]
+	var space := get_world_2d().direct_space_state
+	for r in space.intersect_shape(params, 4):
+		var c = r.get("collider", null)
+		if c is QuestionBlock or c is BrickBlock:
+			return c
+	return null
 
 func _play_sfx(sound_name: String) -> void:
 	var path := "res://Sound/" + sound_name
