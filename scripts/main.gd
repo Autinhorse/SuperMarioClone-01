@@ -22,7 +22,7 @@ var _bg_cam_min: float = 0.0
 var _bg_cam_range: float = 1.0
 var _bg_max_offset: float = 0.0
 
-var current_level_dir: String = ""
+var current_json_path: String = ""
 var current_map_style: int = 0
 var current_areas: Array = []
 
@@ -57,12 +57,12 @@ func _load_level(json_path: String) -> void:
 		push_error("Invalid level JSON: %s" % json_path)
 		return
 	var data: Dictionary = parsed
-	current_areas = data.get("levelDef", [])
+	current_areas = data.get("areas", [])
 	if current_areas.is_empty():
-		print("No levelDef entries in %s" % json_path)
+		print("No areas in %s" % json_path)
 		return
 
-	current_level_dir = json_path.get_base_dir()
+	current_json_path = json_path
 
 	var use_checkpoint := (GameState.checkpoint_json_path == json_path
 			and GameState.checkpoint_area_index >= 0
@@ -89,21 +89,17 @@ func _load_area(index: int) -> void:
 		push_error("area index out of range: %d (have %d)" % [index, current_areas.size()])
 		return
 	var area: Dictionary = current_areas[index]
-	var csv_name: String = area.get("csv", "")
-	var map_style: int = int(area.get("mapStyle", 0))
+	var map_style: int = int(area.get("map_style", 0))
 	var bg_name: String = str(area.get("background", ""))
-	if csv_name.is_empty():
-		return
-	var csv_path := current_level_dir + "/" + csv_name
-	print("[main] load area index=", index, " csv=", csv_path, " style=", map_style)
-	_render_area(csv_path, map_style, index, bg_name)
+	print("[main] load area index=", index, " json=", current_json_path, " style=", map_style)
+	_render_area(map_style, index, bg_name)
 
-func _render_area(csv_path: String, map_style: int, area_index: int, bg_name: String) -> void:
+func _render_area(map_style: int, area_index: int, bg_name: String) -> void:
 	current_map_style = map_style
 	for child in level_root.get_children():
 		child.queue_free()
-	var grid_size: Vector2i = LevelRenderer.render_area(level_root, csv_path, map_style, area_index)
-	print("[main] render_area grid_size=", grid_size, " children=", level_root.get_child_count())
+	var grid_size: Vector2i = LevelRenderer.render_level_v2(level_root, current_json_path, area_index)
+	print("[main] render_level_v2 grid_size=", grid_size, " children=", level_root.get_child_count())
 	_apply_camera_limits(grid_size)
 	_setup_background(bg_name, map_style, grid_size)
 

@@ -1,35 +1,35 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://bxxtlnm7wr2dh"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main_script"]
+[ext_resource type="Script" uid="uid://bwq6ciqb3k6ow" path="res://scripts/main.gd" id="1_main_script"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1293425054]
 script = ExtResource("1_main_script")
 
-[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+[node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=864803662]
 layer = -10
 
-[node name="Color" type="ColorRect" parent="BackgroundLayer"]
+[node name="Color" type="ColorRect" parent="BackgroundLayer" unique_id=848569623]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.5, 0.7, 1.0, 1)
+color = Color(0.5, 0.7, 1, 1)
 
-[node name="Image" type="Sprite2D" parent="BackgroundLayer"]
-centered = false
+[node name="Image" type="Sprite2D" parent="BackgroundLayer" unique_id=60796024]
 visible = false
+centered = false
 
-[node name="Level" type="Node2D" parent="."]
+[node name="Level" type="Node2D" parent="." unique_id=443475712]
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
+[node name="Player" parent="." unique_id=2095637993 instance=ExtResource("2_player")]
 position = Vector2(160, 600)
 
-[node name="Music" type="AudioStreamPlayer" parent="."]
+[node name="Music" type="AudioStreamPlayer" parent="." unique_id=95498493]
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=561843888]
 layer = 50
 
-[node name="CoinLabel" type="Label" parent="HUD"]
+[node name="CoinLabel" type="Label" parent="HUD" unique_id=1676755666]
 offset_left = 20.0
 offset_top = 8.0
 offset_right = 400.0
@@ -38,10 +38,10 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 40
 text = "COINS: 0"
 
-[node name="Overlay" type="CanvasLayer" parent="."]
+[node name="Overlay" type="CanvasLayer" parent="." unique_id=687808562]
 layer = 100
 
-[node name="Black" type="ColorRect" parent="Overlay"]
+[node name="Black" type="ColorRect" parent="Overlay" unique_id=1388802055]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

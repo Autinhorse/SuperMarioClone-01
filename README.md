@@ -44,6 +44,7 @@ Let's see what kind of miracles AI can bring us in this era.
 ### 📅 Development Logs
 
 * [**000:** Tools & Tech Stack](./devlogs/en/000.DevEnvironment.md)
+* [**001:** Week 1 - The Birth of LevelCraft](./devlogs/en/001.Week 1 - The Birth of LevelCraft.md)
 
 *(More updates coming soon...)*
 
