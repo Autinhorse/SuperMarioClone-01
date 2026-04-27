@@ -77,6 +77,40 @@ static func _get_cell(col: int, row: int) -> String:
 		return ""
 	return str(row_arr[col])
 
+static func _normalize_pipe_anchor(s: String) -> String:
+	# Each *pipe-X: marker spawns its anchor ID at the marker cell.
+	if s.begins_with("*pipe-u:"):
+		return "4"
+	if s.begins_with("*pipe-d:"):
+		return "10"
+	if s.begins_with("*pipe-l:"):
+		return "12"
+	if s.begins_with("*pipe-r:"):
+		return "17"
+	return s
+
+# True when this filler cell is covered by a 2x2 anchor at the appropriate offset.
+# Anchor positions in the 2x2: 4=tl(up), 10=bl(down), 12=tl(left), 17=tr(right).
+static func _is_pipe_filler_covered(id_str: String, col: int, row: int) -> bool:
+	var anchor_id: String
+	var dx := 0
+	var dy := 0
+	match id_str:
+		"5":  anchor_id = "4";  dx = -1
+		"6":  anchor_id = "4";  dy = -1
+		"7":  anchor_id = "4";  dx = -1; dy = -1
+		"8":  anchor_id = "10"; dy = 1
+		"9":  anchor_id = "10"; dx = -1; dy = 1
+		"11": anchor_id = "10"; dx = -1
+		"13": anchor_id = "12"; dx = -1
+		"14": anchor_id = "12"; dy = -1
+		"15": anchor_id = "12"; dx = -1; dy = -1
+		"16": anchor_id = "17"; dx = 1
+		"18": anchor_id = "17"; dx = 1; dy = -1
+		"19": anchor_id = "17"; dy = -1
+		_: return false
+	return _normalize_pipe_anchor(_get_cell(col + dx, row + dy)) == anchor_id
+
 static func _detect_piranha_direction(col: int, row: int) -> String:
 	# Look at neighbor cells for an adjacent pipe opening.
 	var below := _get_cell(col, row + 1)
@@ -207,7 +241,8 @@ static func _spawn_tile(parent: Node, id_str: String, px: Vector2, col: int, row
 		"pipe_right_tr", "pipe_right_br":
 			root.set_meta("pipe_dir", "r")
 
-	root.add_child(create_tile_visual(id_str, map_style, meta))
+	if not _is_pipe_filler_covered(id_str, col, row):
+		root.add_child(create_tile_visual(id_str, map_style, meta))
 
 	if bool(meta.get("solid", false)):
 		var body := StaticBody2D.new()
@@ -268,24 +303,39 @@ static func get_tile_texture(id_str: String, map_style: int) -> Texture2D:
 static func create_tile_visual(id_str: String, map_style: int, meta: Dictionary = {}) -> Node2D:
 	var desc := _resolve_visual(id_str, map_style, meta)
 	var textures: Array = desc.get("textures", [])
+	var node: Node2D
 	if textures.size() <= 1:
 		var sprite := Sprite2D.new()
 		sprite.texture = textures[0] if not textures.is_empty() else _placeholder_texture(meta)
-		return sprite
+		node = sprite
+	else:
+		var frames := SpriteFrames.new()
+		frames.set_animation_speed("default", float(desc.get("fps", 1.0)))
+		frames.set_animation_loop("default", bool(desc.get("loop", true)))
+		for tex in textures:
+			frames.add_frame("default", tex)
 
-	var frames := SpriteFrames.new()
-	frames.set_animation_speed("default", float(desc.get("fps", 1.0)))
-	frames.set_animation_loop("default", bool(desc.get("loop", true)))
-	for tex in textures:
-		frames.add_frame("default", tex)
+		var anim := AnimatedSprite2D.new()
+		anim.name = "AnimatedSprite2D"
+		anim.sprite_frames = frames
+		anim.autoplay = "default"
+		anim.animation = "default"
+		anim.play("default")
+		node = anim
 
-	var anim := AnimatedSprite2D.new()
-	anim.name = "AnimatedSprite2D"
-	anim.sprite_frames = frames
-	anim.autoplay = "default"
-	anim.animation = "default"
-	anim.play("default")
-	return anim
+	var rotation_deg: float = float(desc.get("rotation", 0.0))
+	if rotation_deg != 0.0:
+		node.rotation = deg_to_rad(rotation_deg)
+
+	var size: int = int(desc.get("size", 1))
+	if size > 1:
+		var off := float(size - 1) * TILE_SIZE / 2.0
+		var anchor: String = str(desc.get("anchor", "tl"))
+		var sx: float = off if anchor.ends_with("l") else -off
+		var sy: float = off if anchor.begins_with("t") else -off
+		node.position = Vector2(sx, sy)
+
+	return node
 
 # Resolves a tile visual into a frame list + timing.
 # JSON value can be:
@@ -297,7 +347,7 @@ static func _resolve_visual(id_str: String, map_style: int, meta: Dictionary) ->
 	if value == null:
 		value = visuals.get("0", null)
 
-	var result := { "textures": [], "fps": 1.0, "loop": true }
+	var result := { "textures": [], "fps": 1.0, "loop": true, "size": 1, "rotation": 0.0 }
 	if value == null:
 		return result
 
@@ -317,6 +367,9 @@ static func _resolve_visual(id_str: String, map_style: int, meta: Dictionary) ->
 	var frame_count: int = int(cfg.get("frames", 1))
 	result["fps"] = float(cfg.get("fps", 1.0))
 	result["loop"] = bool(cfg.get("loop", true))
+	result["size"] = int(cfg.get("size", 1))
+	result["rotation"] = float(cfg.get("rotation", 0.0))
+	result["anchor"] = str(cfg.get("anchor", "tl"))
 
 	var textures: Array = []
 	for i in range(maxi(frame_count, 1)):

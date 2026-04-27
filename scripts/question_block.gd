@@ -112,6 +112,7 @@ static func _kill_enemies_above(block: Node2D) -> void:
 func _spawn_coin() -> void:
 	var coin := COIN_SCENE.instantiate()
 	coin.position = position + Vector2(0, -32)
+	coin.map_style = map_style
 	get_parent().add_child(coin)
 
 func _spawn_power_up(player: Player) -> void:

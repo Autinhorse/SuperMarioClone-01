@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6qt8ddjntybw"
-path="res://.godot/imported/stone.png-f983ae762f47536942af0e2f37dd3adc.ctex"
+uid="uid://bxytwldxfhy8c"
+path="res://.godot/imported/stone.png-077b670cdcca464a55bac9ab86603569.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/underground/stone.png"
-dest_files=["res://.godot/imported/stone.png-f983ae762f47536942af0e2f37dd3adc.ctex"]
+source_file="res://sprites/sci/tiles/overworld/stone.png"
+dest_files=["res://.godot/imported/stone.png-077b670cdcca464a55bac9ab86603569.ctex"]
 
 [params]
 

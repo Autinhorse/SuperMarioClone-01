@@ -1,10 +1,10 @@
 {
   "name": "World 1 - Level 2",
   "levelDef": [
-    { "csv": "SMB1_World01_02_01.txt", "mapStyle": 0 },
-    { "csv": "SMB1_World01_02_02.txt", "mapStyle": 1 },
-    { "csv": "SMB1_World01_02_03.txt", "mapStyle": 0 },
-    { "csv": "SMB1_World01_02_04.txt", "mapStyle": 1 }
+    { "csv": "SMB1_World01_02_01.txt", "mapStyle": 0, "background": "background_0.png" },
+    { "csv": "SMB1_World01_02_02.txt", "mapStyle": 0, "background": "background_1.png" },
+    { "csv": "SMB1_World01_02_03.txt", "mapStyle": 0, "background": "background_2.png" },
+    { "csv": "SMB1_World01_02_04.txt", "mapStyle": 0, "background": "background_0.png" }
   ],
   "music": ""
 }

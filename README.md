@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/Status-Prototype-orange?style=for-the-badge" />
 </p>
 
-<h1 align="center">Building a Super Mario Maker-Like Game by Talking with AI</h1>
+<h2 align="center">Building a Super Mario Maker-Like Game by Talking with AI</h2>
 <h3 align="center">--- 0 lines of code written by hand ---</h3>
 
 <p align="center">
@@ -40,6 +40,12 @@ I decided to give it a try. This is not just a technical experiment for a vetera
 From today on, I plan to document every step of this project's development—whether it's a breakthrough, a deep pit I fall into, or the technical challenges and my solutions—and share them with everyone.
 
 Let's see what kind of miracles AI can bring us in this era.
+
+### 📅 Development Logs
+
+* [**000:** Tools & Tech Stack](./devlogs/en/000.DevEnvironment.md)
+
+*(More updates coming soon...)*
 
 ---
 © 2026 AI Dream Builder. Built with 🤖 and ❤️.

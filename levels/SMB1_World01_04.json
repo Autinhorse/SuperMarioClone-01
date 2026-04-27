@@ -1,7 +1,7 @@
 {
   "name": "World 1 - Level 4",
   "levelDef": [
-    { "csv": "SMB1_World01_04_01.txt", "mapStyle": 1 }
+    { "csv": "SMB1_World01_04_01.txt", "mapStyle": 0, "background": "background_0.png" }
   ],
   "music": ""
 }

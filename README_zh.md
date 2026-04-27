@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/状态-原型阶段-orange?style=for-the-badge" />
 </p>
 
-<h1 align="center">Building a Super Mario Maker-Like Game by Talking with AI</h1>
+<h2 align="center">Building a Super Mario Maker-Like Game by Talking with AI</h2>
 <h3 align="center">--- 全程与 AI 对话开发 · 0 行手写代码 ---</h3>
 
 <p align="center">
@@ -45,6 +45,8 @@
 
 ### 📅 开发日志连载
 
+* [**000:** 使用的工具](./devlogs/zh/000.开发环境.md)
+* [**001:** Week 1 - LevelCraft 的诞生](./devlogs/zh/001.Week 1 - LevelCraft 的诞生.md )
 
 *(内容持续更新中...)*
 
