@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d0oplm3g3hl5c"
-path="res://.godot/imported/middle_1.png-1d643d4e0140f988279cbc207169f390.ctex"
+uid="uid://drc353viq06h6"
+path="res://.godot/imported/middle_1.png-ef0bad381c5bb50c138fdae26fac34f1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/middle_1.png"
-dest_files=["res://.godot/imported/middle_1.png-1d643d4e0140f988279cbc207169f390.ctex"]
+source_file="res://sprites/sci/tiles/underground/middle_1.png"
+dest_files=["res://.godot/imported/middle_1.png-ef0bad381c5bb50c138fdae26fac34f1.ctex"]
 
 [params]
 

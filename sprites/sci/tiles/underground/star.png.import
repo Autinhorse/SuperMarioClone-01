@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bw7c24iu5eo3c"
-path="res://.godot/imported/star.png-8a9810183eb0f393b7a336ea732a0a1b.ctex"
+uid="uid://b40d8j1b5tjpi"
+path="res://.godot/imported/star.png-00a9e75f838de2017780ea9fcf9238c5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/star.png"
-dest_files=["res://.godot/imported/star.png-8a9810183eb0f393b7a336ea732a0a1b.ctex"]
+source_file="res://sprites/sci/tiles/underground/star.png"
+dest_files=["res://.godot/imported/star.png-00a9e75f838de2017780ea9fcf9238c5.ctex"]
 
 [params]
 

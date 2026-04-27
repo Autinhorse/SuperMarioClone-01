@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bsoi7qexxw803"
-path="res://.godot/imported/lava_bottom.png-4d9244a32a686e6341c4a84d8f822724.ctex"
+uid="uid://bnf1vo2tjxh80"
+path="res://.godot/imported/lava_bottom.png-0b79d903a6415d961609bf3cd4473bfa.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/lava_bottom.png"
-dest_files=["res://.godot/imported/lava_bottom.png-4d9244a32a686e6341c4a84d8f822724.ctex"]
+source_file="res://sprites/sci/tiles/underground/lava_bottom.png"
+dest_files=["res://.godot/imported/lava_bottom.png-0b79d903a6415d961609bf3cd4473bfa.ctex"]
 
 [params]
 

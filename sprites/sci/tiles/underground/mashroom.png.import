@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d3mlnc4bf6vbi"
-path="res://.godot/imported/mashroom.png-9bf0f96006362c742b318f26815609db.ctex"
+uid="uid://bd6r7jnlevbu2"
+path="res://.godot/imported/mashroom.png-79a44f5ddc420753168a3a2082edbf47.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/mashroom.png"
-dest_files=["res://.godot/imported/mashroom.png-9bf0f96006362c742b318f26815609db.ctex"]
+source_file="res://sprites/sci/tiles/underground/mashroom.png"
+dest_files=["res://.godot/imported/mashroom.png-79a44f5ddc420753168a3a2082edbf47.ctex"]
 
 [params]
 

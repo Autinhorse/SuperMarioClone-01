@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmbjqcypa6b8"
-path="res://.godot/imported/bridge.png-84f8e84c02682b31f0c614a09dc4e899.ctex"
+uid="uid://byj8vebyjqwlb"
+path="res://.godot/imported/bridge.png-5d7b49f3564515ab81124df1ece926d8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/bridge.png"
-dest_files=["res://.godot/imported/bridge.png-84f8e84c02682b31f0c614a09dc4e899.ctex"]
+source_file="res://sprites/sci/tiles/underground/bridge.png"
+dest_files=["res://.godot/imported/bridge.png-5d7b49f3564515ab81124df1ece926d8.ctex"]
 
 [params]
 

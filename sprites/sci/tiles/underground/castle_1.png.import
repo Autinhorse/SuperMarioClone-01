@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwslxr2ig1lx"
-path="res://.godot/imported/castle_1.png-0ce78489d021089be11e0c94898c2ea4.ctex"
+uid="uid://d1lr6cxv7tfva"
+path="res://.godot/imported/castle_1.png-c5f27a3a48d32f0712fa1bfa85f80ced.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/castle_1.png"
-dest_files=["res://.godot/imported/castle_1.png-0ce78489d021089be11e0c94898c2ea4.ctex"]
+source_file="res://sprites/sci/tiles/underground/castle_1.png"
+dest_files=["res://.godot/imported/castle_1.png-c5f27a3a48d32f0712fa1bfa85f80ced.ctex"]
 
 [params]
 

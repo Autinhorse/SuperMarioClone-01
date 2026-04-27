@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://e0qq5ccdny4s"
-path="res://.godot/imported/lava_top.png-5804b19f511b41523baf8f9a3e34fad2.ctex"
+uid="uid://cns1e5sma6s4n"
+path="res://.godot/imported/lava_top.png-61eb044042918b1c8ef5bd674ce7b14b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/lava_top.png"
-dest_files=["res://.godot/imported/lava_top.png-5804b19f511b41523baf8f9a3e34fad2.ctex"]
+source_file="res://sprites/sci/tiles/underground/lava_top.png"
+dest_files=["res://.godot/imported/lava_top.png-61eb044042918b1c8ef5bd674ce7b14b.ctex"]
 
 [params]
 

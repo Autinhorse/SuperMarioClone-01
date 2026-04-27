@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://47swlsicd5tg"
-path="res://.godot/imported/pipe_right_tr.png-1e6f786290e5d6514a46af59e36e095e.ctex"
+uid="uid://bw4gd0pdywfd0"
+path="res://.godot/imported/pipe_right_tr.png-67501a3141d6ccf07963bc705be82a9b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/sci/tiles/overworld/pipe_right_tr.png"
-dest_files=["res://.godot/imported/pipe_right_tr.png-1e6f786290e5d6514a46af59e36e095e.ctex"]
+source_file="res://sprites/sci/tiles/underground/pipe_right_tr.png"
+dest_files=["res://.godot/imported/pipe_right_tr.png-67501a3141d6ccf07963bc705be82a9b.ctex"]
 
 [params]
 
