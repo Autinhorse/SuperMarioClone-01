@@ -8,7 +8,9 @@ func _ready() -> void:
 	tween.tween_property(press_label, "modulate:a", 1.0, 0.6)
 
 func _input(event: InputEvent) -> void:
-	if (event is InputEventKey and event.pressed and not event.echo) \
-			or (event is InputEventMouseButton and event.pressed) \
-			or (event is InputEventJoypadButton and event.pressed):
-		get_tree().change_scene_to_file("res://scenes/level_select.tscn")
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_P:
+				get_tree().change_scene_to_file("res://scenes/level_select.tscn")
+			KEY_E:
+				get_tree().change_scene_to_file("res://scenes/editor.tscn")

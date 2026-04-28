@@ -46,7 +46,8 @@
 ### 📅 开发日志连载
 
 * [**000:** 使用的工具](./devlogs/zh/000.开发环境.md)
-* [**001:** Week 1 - LevelCraft 的诞生](./devlogs/zh/001.Week 1 - LevelCraft 的诞生.md )
+* [**001:** Week 1 - LevelCraft 的诞生](./devlogs/zh/001.Week%201%20-%20LevelCraft%20的诞生.md)
+* [**002:** Day 10 - 网友的冷水](./devlogs/zh/002.Day%2010%20-%20网友的冷水.md )
 
 *(内容持续更新中...)*
 
