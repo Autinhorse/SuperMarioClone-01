@@ -65,20 +65,22 @@
 
 ### 📅 Ricochet 开发日志连载
 
-* [**001:** Week 1 - LevelCraft 的诞生](./devlogs/zh/001.Week%201%20-%20LevelCraft%20的诞生.md)
-* [**002:** Day 10 - 网友的冷水](./devlogs/zh/002.Day%2010%20-%20网友的冷水.md )
+* [**000:** 我的“AI 研发团队”与技术栈 ](./games/ricochet/devlogs/zh/000.%20我的“AI%20研发团队”与技术栈.md)
+* [**001:** Day 1 - Ricochet 开始3个小时 ](./games/ricochet/devlogs/zh/001.Day%201%20-%20Ricochet%20开始3个小时.md)
 
 *(内容持续更新中...)*
-
 ---
 
-* [**001:** Day 1 - Ricochet 开始3个小时 ](./games/_archive_jump/devlogs/zh/001.Week%201%20-%20LevelCraft%20的诞生.md)
+#### 与Claude的对话记录
+我本来一直和Claude聊天是用中文的。对于这个项目，开始努力使用英文。并且会把每天通过VS Code CLI和Claude Code聊天的记录完整贴出来，万一谁有兴趣可以看看这个软件是怎么样一步一步走到这里的。
 
----
+[Conversation 0428: ](./games/ricochet/devlogs/conversation%20with%20claude%202026-04028.JSONL)
+
+
 
 ### 📅 Super Jumper Maker 开发日志连载
 
-* [**000:** 使用的工具](./games/_archive_jump/devlogs/zh/000.开发环境.md)
+* [**000:**  我的“AI 研发团队”与技术栈](./games/ricochet/devlogs/zh/000.%20我的“AI%20研发团队”与技术栈.md)
 * [**001:** Week 1 - LevelCraft 的诞生](./games/_archive_jump/devlogs/zh/001.Week%201%20-%20LevelCraft%20的诞生.md)
 * [**002:** Day 10 - 网友的冷水](./games/_archive_jump/devlogs/zh/002.Day%2010%20-%20网友的冷水.md )
 

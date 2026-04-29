@@ -65,12 +65,18 @@ Wish me luck.
 ---
 
 ### 📅 Ricochet Development Logs
-
-* [**001:** Week 1 - The Birth of LevelCraft](./devlogs/en/001.Week%201%20-%20The%20Birth%20of%20LevelCraft.md)
-* [**002:** Day 10 - Cold Water from an Online Friends](./devlogs/en/002.Day%2010%20-%20Cold%20Water%20from%20an%20Online%20Friends.md)
+* [**000:** My AI Dev Team and Tech Stack ](./games/ricochet/devlogs/en/000.My%20AI%20Dev%20Team%20and%20Tech%20Stack.md)
+* [**001:** Day 1 - Ricochet 开始3个小时 ](./games/ricochet/devlogs/en/001.Day%201%20-%20The%20first%20three%20hours%20of%20Ricochet.md)
 
 
 *(More updates coming soon...)*
+
+---
+#### The Claude Transcripts
+
+Up until now, my default language with Claude has always been Chinese. But for this project, I'm pushing myself to work entirely in English. I'll be dumping the complete, raw chat histories from the VS Code CLI here every day. Just in case anyone is curious to see exactly how this game is being willed into existence, prompt by prompt and step by step.
+
+[Conversation 0428: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-04028.JSONL)
 
 ---
 

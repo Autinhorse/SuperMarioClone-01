@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://b1ricochetplay001"]
+[gd_scene format=3 uid="uid://dkwlohi434qqi"]
 
-[ext_resource type="Script" path="res://scripts/play.gd" id="1_play"]
+[ext_resource type="Script" uid="uid://b88olecjrpd8t" path="res://scripts/play.gd" id="1_play"]
 
-[node name="Play" type="Node2D"]
+[node name="Play" type="Node2D" unique_id=957585792]
+position = Vector2(1, 0)
 script = ExtResource("1_play")
