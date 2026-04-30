@@ -73,6 +73,11 @@ Wish me luck.
 
 *(More updates coming soon...)*
 
+
+---
+Youtube Channel Available here:
+[![Watch the Ricochet Series](https://img.youtube.com/vi/OV4my9E5MFs/maxresdefault.jpg)](https://www.youtube.com/playlist?list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv)
+
 ---
 #### The Claude Transcripts
 

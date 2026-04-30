@@ -71,6 +71,10 @@
 *(内容持续更新中...)*
 ---
 
+Youtube Channel Available here:
+[![Watch the Ricochet Series](https://img.youtube.com/vi/OV4my9E5MFs/maxresdefault.jpg)](https://www.youtube.com/playlist?list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv)
+---
+
 #### 与Claude的对话记录
 我本来一直和Claude聊天是用中文的。对于这个项目，开始努力使用英文。并且会把每天通过VS Code CLI和Claude Code聊天的记录完整贴出来，万一谁有兴趣可以看看这个软件是怎么样一步一步走到这里的。
 
