@@ -67,7 +67,9 @@
 
 * [**000:** 我的“AI 研发团队”与技术栈 ](./games/ricochet/devlogs/zh/000.%20我的“AI%20研发团队”与技术栈.md)
 * [**001:** Day 1 - Ricochet 开始3个小时 ](./games/ricochet/devlogs/zh/001.Day%201%20-%20Ricochet%20开始3个小时.md)
-* [**001:** Day 2 - 今天的进展不错 ](./games/ricochet/devlogs/zh/002.Day%202%20-%20今天的进展不错.md)
+* [**002:** Day 2 - 今天的进展不错 ](./games/ricochet/devlogs/zh/002.Day%202%20-%20今天的进展不错.md)
+* [**003:** Day 3 - 编辑器优化和更多的地图元素 ](./games/ricochet/devlogs/zh/003.Day%203%20-%20编辑器优化和更多的地图元素.md)
+
 *(内容持续更新中...)*
 ---
 
@@ -80,6 +82,7 @@ Youtube Channel Available here:
 
 [Conversation 0428: 聊天记录 ](./games/ricochet/devlogs/conversation%20with%20claude%202026-04028.JSONL)
 [Conversation 0429: 聊天记录 ](./games/ricochet/devlogs/conversation%20with%20claude%202026-04029.JSONL)
+[Conversation 0430: 聊天记录 ](./games/ricochet/devlogs/conversation%20with%20claude%202026-04030.jsonl)
 
 
 ### 📅 Super Jumper Maker 开发日志连载

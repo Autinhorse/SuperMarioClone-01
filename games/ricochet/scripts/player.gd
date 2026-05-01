@@ -147,7 +147,10 @@ func _idle(_delta: float) -> void:
 		velocity = Vector2(0.0, -flight_speed)
 		state = State.FLYING_UP
 	elif Input.is_action_just_pressed("jump"):
-		velocity = Vector2(0.0, -jump_initial_velocity)
+		# Preserve horizontal velocity from a conveyor so jumping off carries
+		# the player forward in an arc. Up-launch above intentionally does not
+		# preserve it — vertical fly is straight up regardless of conveyor.
+		velocity = Vector2(velocity.x, -jump_initial_velocity)
 		state = State.JUMPING
 	# Down on floor: intentionally a no-op in v1.
 
@@ -345,20 +348,59 @@ func _update_collision_shape() -> void:
 	if _collision_rect.size != target:
 		_collision_rect.size = target
 
-# Walks the most recent slide collisions for one whose normal points up
-# (the player is standing on it) and which carries a "conveyor_dir" meta.
-# Returns the meta value (+1 right / -1 left), or 0 for non-conveyor floors.
-# Reads the previous physics frame's collisions, which is fine: the conveyor
-# push lags by one frame at most, invisible at 60fps.
+# Returns the conveyor_dir (+1 right / -1 left) of the belt directly
+# beneath the player, or 0 if none. Uses the same three-point physics
+# probe as _is_over_conveyor — slide_collisions is unreliable for this:
+# during pure horizontal IDLE motion, and while the player straddles two
+# adjacent floor bodies, move_and_slide does not always keep the
+# conveyor body in the slide list, which previously caused the conveyor
+# push (and the horizontal momentum carried into a jump) to drop to zero
+# for one frame at a time.
 func _floor_conveyor_dir() -> int:
-	for i in get_slide_collision_count():
-		var col := get_slide_collision(i)
-		var n := col.get_normal()
-		if n.y < -0.5:  # surface beneath the player (normal points up)
-			var body := col.get_collider()
-			if body != null and body.has_meta("conveyor_dir"):
-				return int(body.get_meta("conveyor_dir"))
+	var hit := _probe_floor_conveyor()
+	if hit != null:
+		return int(hit.get_meta("conveyor_dir"))
 	return 0
+
+
+# Whether any part of the player's body sits over a conveyor cell. Used
+# by _hit_hazard to defer next-cell evaluation while straddling the end
+# of a belt.
+func _is_over_conveyor() -> bool:
+	return _probe_floor_conveyor() != null
+
+
+# Probes three points just below the player's body (near left edge,
+# center, near right edge) and returns the first wall-layer body found
+# that carries the "conveyor_dir" meta, or null. Centralizes the
+# physics-query logic used by both _floor_conveyor_dir and
+# _is_over_conveyor.
+func _probe_floor_conveyor() -> Node2D:
+	if _collision_rect == null:
+		return null
+	var space_state := get_world_2d().direct_space_state
+	if space_state == null:
+		return null
+	var query := PhysicsPointQueryParameters2D.new()
+	query.collide_with_bodies = true
+	query.collision_mask = 1
+	var half_w: float = _collision_rect.size.x * 0.5
+	var half_h: float = _collision_rect.size.y * 0.5
+	var probe_y: float = position.y + half_h + 2.0
+	var inset: float = 1.0
+	var probe_xs: Array = [
+		position.x - half_w + inset,
+		position.x,
+		position.x + half_w - inset,
+	]
+	for x in probe_xs:
+		query.position = Vector2(x, probe_y)
+		var hits: Array = space_state.intersect_point(query, 4)
+		for hit in hits:
+			var collider: Object = hit.get("collider")
+			if collider is Node2D and (collider as Node2D).has_meta("conveyor_dir"):
+				return collider as Node2D
+	return null
 
 
 func _hit_hazard() -> bool:
@@ -392,38 +434,6 @@ func _hit_hazard() -> bool:
 		return true
 	return false
 
-
-# Probes three points just below the player's body (near left edge,
-# center, near right edge) and returns true if any is inside a wall-layer
-# body with the conveyor_dir meta. Used to defer next-cell evaluation
-# while the player straddles the end of a belt — the slide_collisions
-# list isn't a reliable signal for that during horizontal motion.
-func _is_over_conveyor() -> bool:
-	if _collision_rect == null:
-		return false
-	var space_state := get_world_2d().direct_space_state
-	if space_state == null:
-		return false
-	var query := PhysicsPointQueryParameters2D.new()
-	query.collide_with_bodies = true
-	query.collision_mask = 1
-	var half_w: float = _collision_rect.size.x * 0.5
-	var half_h: float = _collision_rect.size.y * 0.5
-	var probe_y: float = position.y + half_h + 2.0
-	var inset: float = 1.0
-	var probe_xs: Array = [
-		position.x - half_w + inset,
-		position.x,
-		position.x + half_w - inset,
-	]
-	for x in probe_xs:
-		query.position = Vector2(x, probe_y)
-		var hits: Array = space_state.intersect_point(query, 4)
-		for hit in hits:
-			var collider: Object = hit.get("collider")
-			if collider != null and collider.has_meta("conveyor_dir"):
-				return true
-	return false
 
 func _die() -> void:
 	velocity = Vector2.ZERO
