@@ -22,8 +22,16 @@
       "glass_walls": [
         {"x": 6, "y": 17, "delay": 1.5}
       ],
-      "key_walls": [],
-      "keys": [],
+      "key_walls": [
+        {"x": 5, "y": 5, "color": 0},
+        {"x": 6, "y": 5, "color": 0},
+        {"x": 18, "y": 5, "color": 3},
+        {"x": 19, "y": 5, "color": 3}
+      ],
+      "keys": [
+        {"x": 3, "y": 5, "color": 0},
+        {"x": 21, "y": 5, "color": 3}
+      ],
       "portals": [
         {
           "color": 0.0,

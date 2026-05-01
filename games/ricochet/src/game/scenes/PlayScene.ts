@@ -10,6 +10,8 @@ import {
   COLOR_CONVEYOR,
   COLOR_BACKGROUND,
   COLOR_GRID,
+  KEY_COLORS_LIGHT,
+  KEY_COLORS_DARK,
   DEFAULT_LEVEL_URL,
   DEFAULT_PAGE_INDEX,
 } from '../config/feel';
@@ -73,6 +75,14 @@ export class PlayScene extends Phaser.Scene {
   // are pooled in `bullets` and despawn on contact with anything.
   private cannons: Cannon[] = [];
   private bullets!: Phaser.GameObjects.Group;
+  // Keys: pure visuals (same no-body pattern as coins so flying through
+  // them doesn't trip the player's wall-detection). Picking up a key
+  // removes ALL key_walls of the matching color on the page.
+  private keys!: Phaser.GameObjects.Group;
+  private keyPickupThreshold = 0;
+  // Key walls: solid wall-like static bodies in their own group, so the
+  // pickup-driven removal can iterate JUST the matching-color walls.
+  private keyWalls!: Phaser.Physics.Arcade.StaticGroup;
   private debugText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
 
@@ -114,12 +124,16 @@ export class PlayScene extends Phaser.Scene {
     this.coinCount = 0;
     this.bullets = this.add.group();
     this.cannons = [];
+    this.keys = this.add.group();
+    this.keyWalls = this.physics.add.staticGroup();
     this.buildWalls(page);
     this.buildSpikes(page);
     this.buildGlassWalls(page);
     this.buildSpikeBlocks(page);
     this.buildConveyors(page);
     this.buildCannons(page);
+    this.buildKeyWalls(page);
+    this.buildKeys(page);
 
     // Input wiring — the player gets references to the cursor keys and
     // jump key so it doesn't have to reach into the scene's input plugin.
@@ -151,6 +165,11 @@ export class PlayScene extends Phaser.Scene {
     // see the field comment on `coins`.) Pre-compute the AABB threshold:
     // half player width (TILE_SIZE/2) plus half coin width (0.55 * TILE_SIZE / 2).
     this.coinPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.275;
+    // Same trick for keys (radius 0.25 tile, so threshold = 0.5 + 0.25).
+    this.keyPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.25;
+    // Key walls are walls — block the player. Bullet despawn against
+    // them is added below alongside the other wall-like groups.
+    this.physics.add.collider(this.player, this.keyWalls);
 
     // Bullets despawn on contact with anything wall-like. The same callback
     // handles all wall-like groups; the per-bullet `ignoreBody`/`ignoreTimer`
@@ -166,6 +185,7 @@ export class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.bullets, this.glassWalls, handleBulletWallHit);
     this.physics.add.overlap(this.bullets, this.killableWalls, handleBulletWallHit);
     this.physics.add.overlap(this.bullets, this.hazards, handleBulletWallHit);
+    this.physics.add.overlap(this.bullets, this.keyWalls, handleBulletWallHit);
     // Bullet vs player: kill + despawn.
     this.physics.add.overlap(this.player, this.bullets, (_player, bullet) => {
       this.player.die();
@@ -205,6 +225,7 @@ export class PlayScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     this.player.update(time, delta);
     this.checkCoinPickups();
+    this.checkKeyPickups();
 
     const dt = delta / 1000;
     for (const cannon of this.cannons) {
@@ -431,6 +452,79 @@ export class PlayScene extends Phaser.Scene {
       // physically blocks the player against the cannon's cell.
       this.walls.add(cannon);
       this.cannons.push(cannon);
+    }
+  }
+
+  private buildKeys(page: PageData): void {
+    if (!page.keys) {
+      return;
+    }
+    for (const k of page.keys) {
+      this.makeKey(k.x, k.y, k.color);
+    }
+  }
+
+  // No physics body — same pattern as coins (a body would set the
+  // player's `touching.X` flags as a side-effect and trip FLYING_H's
+  // wall-detection). Pickup is a manual distance check in update().
+  private makeKey(col: number, row: number, colorIdx: number): void {
+    const x = (col + 0.5) * TILE_SIZE;
+    const y = (row + 0.5) * TILE_SIZE;
+    const radius = TILE_SIZE * 0.25;
+    const palette = KEY_COLORS_LIGHT[colorIdx] ?? 0xffffff;
+    const visual = this.add.circle(x, y, radius, palette);
+    visual.setData('color', colorIdx);
+    this.keys.add(visual);
+  }
+
+  private buildKeyWalls(page: PageData): void {
+    if (!page.key_walls) {
+      return;
+    }
+    for (const kw of page.key_walls) {
+      this.makeKeyWall(kw.x, kw.y, kw.color);
+    }
+  }
+
+  // Solid wall — player can't pass; bullet hits despawn it. Same group
+  // shape as `walls`/`glassWalls`, just kept separate so picking up a
+  // matching-color key only iterates these and not every wall on the page.
+  private makeKeyWall(col: number, row: number, colorIdx: number): void {
+    const x = (col + 0.5) * TILE_SIZE;
+    const y = (row + 0.5) * TILE_SIZE;
+    const palette = KEY_COLORS_DARK[colorIdx] ?? 0x444444;
+    const visual = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, palette);
+    visual.setData('color', colorIdx);
+    this.keyWalls.add(visual);
+    const body = visual.body as Phaser.Physics.Arcade.StaticBody;
+    body.setSize(TILE_SIZE, TILE_SIZE);
+    body.updateFromGameObject();
+  }
+
+  private checkKeyPickups(): void {
+    const px = this.player.x;
+    const py = this.player.y;
+    const t = this.keyPickupThreshold;
+    const children = this.keys.getChildren();
+    for (let i = children.length - 1; i >= 0; i--) {
+      const key = children[i] as Phaser.GameObjects.Arc;
+      if (Math.abs(key.x - px) < t && Math.abs(key.y - py) < t) {
+        const colorIdx = key.getData('color') as number;
+        key.destroy();
+        this.removeKeyWallsByColor(colorIdx);
+      }
+    }
+  }
+
+  // Cascade: collecting a key destroys ALL key_walls that share its color.
+  private removeKeyWallsByColor(colorIdx: number): void {
+    const walls = this.keyWalls.getChildren();
+    // Iterate backwards because destroy() removes from the group's list.
+    for (let i = walls.length - 1; i >= 0; i--) {
+      const wall = walls[i] as Phaser.GameObjects.Rectangle;
+      if (wall.getData('color') === colorIdx) {
+        wall.destroy();
+      }
     }
   }
 

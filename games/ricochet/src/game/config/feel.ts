@@ -52,5 +52,25 @@ export const COLOR_CONVEYOR = 0x666c8c;       // muted blue-gray (matches Godot 
 export const COLOR_CANNON = 0x4d4d52;         // dark gray (matches Godot COLOR_CANNON)
 export const COLOR_CANNON_BARREL = 0x8c8c99;  // lighter gray (matches Godot COLOR_CANNON_BARREL)
 export const COLOR_BULLET = 0xf27240;         // orange-red (matches Godot bullet color)
+
+// Six maximally-distinct key colors (mirrors Godot KEY_COLORS). Each
+// index pairs a "light" variant for the bright key pickup with a "dark"
+// variant for the matching key-wall (so they read as related but
+// distinguishable). Dark = 70% of light per channel — same lerp Godot
+// uses via Color.darkened(0.3).
+export const KEY_COLORS_LIGHT: readonly number[] = [
+  0xf24c4c,  // 0 red
+  0xf29933,  // 1 orange
+  0xf2e633,  // 2 yellow
+  0x4cd959,  // 3 green
+  0x33bff2,  // 4 cyan
+  0xb366f2,  // 5 purple
+];
+export const KEY_COLORS_DARK: readonly number[] = KEY_COLORS_LIGHT.map((c) => {
+  const r = Math.floor(((c >> 16) & 0xff) * 0.7);
+  const g = Math.floor(((c >> 8) & 0xff) * 0.7);
+  const b = Math.floor((c & 0xff) * 0.7);
+  return (r << 16) | (g << 8) | b;
+});
 export const COLOR_BACKGROUND = '#22252c';    // page background
 export const COLOR_GRID = 0x2a2f36;           // subtle grid behind everything
