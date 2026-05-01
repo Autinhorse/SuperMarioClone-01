@@ -96,7 +96,9 @@
         {"x": 1, "y": 10, "dir": "right"},
         {"x": 23, "y": 10, "dir": "left"}
       ],
-      "teleports": [],
+      "teleports": [
+        {"x": 12, "y": 1, "target_page": 1}
+      ],
       "tiles": [
         "WWWWWWWWWWWWWWWWWWWWWWWWW",
         "W..........W............W",

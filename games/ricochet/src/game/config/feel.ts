@@ -36,6 +36,9 @@ export const DEATH_PAUSE_SEC = 1.2;
 // partner from immediately ping-ponging back. 0.3s is enough for any
 // reasonable forward velocity to clear the partner's overlap area.
 export const PORTAL_COOLDOWN_SEC = 0.3;
+// Fade-to-black duration for cross-page teleport / exit transitions.
+// One leg (fade-out OR fade-in); the full transition is 2 × this.
+export const FADE_DURATION_MS = 200;
 
 // ----- Death animation -----
 
@@ -62,6 +65,8 @@ export const COLOR_BULLET = 0xf27240;         // orange-red (matches Godot bulle
 export const COLOR_GEAR = 0x999999;           // medium gray (the disc)
 export const COLOR_GEAR_SPOKE = 0x333333;     // dark gray (the rotating spokes)
 export const COLOR_GEAR_HUB = 0xff9933;       // bright orange (the center hub — makes spin readable)
+export const COLOR_TELEPORT = 0xf28c33;       // orange (matches Godot COLOR_TELEPORT) — cross-page teleporter
+export const COLOR_EXIT = 0x66d973;           // green (matches Godot COLOR_EXIT) — level goal
 
 // Six maximally-distinct key colors (mirrors Godot KEY_COLORS). Each
 // index pairs a "light" variant for the bright key pickup with a "dark"

@@ -8,12 +8,15 @@ import {
   COLOR_COIN,
   COLOR_GLASS,
   COLOR_CONVEYOR,
+  COLOR_TELEPORT,
+  COLOR_EXIT,
   COLOR_BACKGROUND,
   COLOR_GRID,
   KEY_COLORS_LIGHT,
   KEY_COLORS_DARK,
   DEFAULT_LEVEL_URL,
   DEFAULT_PAGE_INDEX,
+  FADE_DURATION_MS,
 } from '../config/feel';
 import { Bullet } from '../entities/Bullet';
 import { Cannon } from '../entities/Cannon';
@@ -22,7 +25,12 @@ import { CONVEYOR_DIR_DATA_KEY, Player, PlayerState } from '../entities/Player';
 import { Portal } from '../entities/Portal';
 import { Turret } from '../entities/Turret';
 import { validateLevel } from '../../shared/level-format/load';
-import type { CardinalDir, PageData } from '../../shared/level-format/types';
+import type { CardinalDir, LevelData, PageData } from '../../shared/level-format/types';
+
+// Cell-distance pickup struct used for teleport / exit triggers (manual
+// distance check, mirroring the no-body coin/key pattern). Half-tile
+// AABB threshold so the player only triggers when meaningfully overlapped.
+type Trigger = { x: number; y: number; targetPage: number };
 
 // Spike rect layout per direction. Each cell splits into:
 //   - A "plate" (wall — blocks the player, mounts the spikes)
@@ -97,11 +105,36 @@ export class PlayScene extends Phaser.Scene {
   // tracks the player. Built before the player exists, so PlayScene
   // calls turret.setPlayer() once player is constructed.
   private turrets: Turret[] = [];
+  // Teleports + exit use the no-body distance-trigger pattern so the
+  // player passes through them visually without their physics body
+  // tripping FLYING_H wall-detection (same trick as coins/keys).
+  private teleports: Trigger[] = [];
+  private exit: Trigger | null = null;
+  // Multi-page state. startPageIndex comes in via init() from
+  // scene.restart so a teleport can hand off to the next page; the
+  // level itself is parsed once per scene run and cached.
+  private startPageIndex = DEFAULT_PAGE_INDEX;
+  private currentPageIndex = DEFAULT_PAGE_INDEX;
+  private shouldFadeIn = false;
+  private loadedLevel!: LevelData;
+  // Black overlay for transition fade-out / fade-in. Pinned to the
+  // camera (scrollFactor 0) so it covers the whole viewport regardless
+  // of the centered-room camera scroll.
+  private fadeOverlay!: Phaser.GameObjects.Rectangle;
+  private transitioning = false;
   private debugText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
 
   constructor() {
     super('PlayScene');
+  }
+
+  // Receives data from scene.restart on cross-page transitions. First
+  // boot has no data, so falls back to DEFAULT_PAGE_INDEX with no
+  // fade-in (instant initial render).
+  init(data?: { pageIndex?: number; fadeIn?: boolean }): void {
+    this.startPageIndex = data?.pageIndex ?? DEFAULT_PAGE_INDEX;
+    this.shouldFadeIn = data?.fadeIn ?? false;
   }
 
   preload(): void {
@@ -112,11 +145,13 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLOR_BACKGROUND);
 
     const raw = this.cache.json.get(LEVEL_KEY) as unknown;
-    const level = validateLevel(raw, DEFAULT_LEVEL_URL);
-    const page = level.pages[DEFAULT_PAGE_INDEX];
+    this.loadedLevel = validateLevel(raw, DEFAULT_LEVEL_URL);
+    this.currentPageIndex = this.startPageIndex;
+    const page = this.loadedLevel.pages[this.currentPageIndex];
     if (!page) {
-      throw new Error(`Level has no page index ${DEFAULT_PAGE_INDEX}`);
+      throw new Error(`Level has no page index ${this.currentPageIndex}`);
     }
+    this.transitioning = false;
 
     const cols = page.tiles[0]!.length;
     const rows = page.tiles.length;
@@ -143,6 +178,8 @@ export class PlayScene extends Phaser.Scene {
     this.gears = [];
     this.portals = [];
     this.turrets = [];
+    this.teleports = [];
+    this.exit = null;
     this.buildWalls(page);
     this.buildSpikes(page);
     this.buildGlassWalls(page);
@@ -154,6 +191,8 @@ export class PlayScene extends Phaser.Scene {
     this.buildGears(page);
     this.buildPortals(page);
     this.buildTurrets(page);
+    this.buildTeleports(page);
+    this.buildExit();
 
     // Input wiring — the player gets references to the cursor keys and
     // jump key so it doesn't have to reach into the scene's input plugin.
@@ -232,7 +271,7 @@ export class PlayScene extends Phaser.Scene {
       .text(
         16,
         this.scale.gameSize.height - 28,
-        `${level.name}  |  Arrows: launch  |  Space: jump  |  Phase 5 — coins / glass / spike-block / death anim`,
+        `${this.loadedLevel.name}  (page ${this.currentPageIndex + 1}/${this.loadedLevel.pages.length})  |  Arrows: launch  |  Space: jump`,
         { color: '#9aa0a8', fontSize: '14px' },
       )
       .setScrollFactor(0);
@@ -254,12 +293,30 @@ export class PlayScene extends Phaser.Scene {
         fontFamily: 'monospace',
       })
       .setScrollFactor(0);
+
+    // Fade overlay (full design viewport, scroll-locked, on top of
+    // everything). Starts opaque on a transition entrance so the player
+    // sees a clean fade-in; instant-render on the very first scene boot.
+    this.fadeOverlay = this.add
+      .rectangle(0, 0, this.scale.gameSize.width, this.scale.gameSize.height, 0x000000)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setAlpha(this.shouldFadeIn ? 1 : 0);
+    if (this.shouldFadeIn) {
+      this.tweens.add({
+        targets: this.fadeOverlay,
+        alpha: 0,
+        duration: FADE_DURATION_MS,
+      });
+    }
   }
 
   update(time: number, delta: number): void {
     this.player.update(time, delta);
     this.checkCoinPickups();
     this.checkKeyPickups();
+    this.checkPageTriggers();
 
     const dt = delta / 1000;
     for (const cannon of this.cannons) {
@@ -638,6 +695,94 @@ export class PlayScene extends Phaser.Scene {
       );
       this.gears.push(gear);
     }
+  }
+
+  private buildTeleports(page: PageData): void {
+    if (!page.teleports) {
+      return;
+    }
+    for (const tp of page.teleports) {
+      const x = (tp.x + 0.5) * TILE_SIZE;
+      const y = (tp.y + 0.5) * TILE_SIZE;
+      // No body — manual distance trigger in checkPageTriggers. The
+      // visual is a cell-sized orange rect with a "→N" label showing
+      // the destination page (1-indexed for human readability).
+      this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_TELEPORT);
+      this.add
+        .text(x, y, `→${tp.target_page + 1}`, {
+          color: '#000000',
+          fontSize: '20px',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5);
+      this.teleports.push({ x, y, targetPage: tp.target_page });
+    }
+  }
+
+  // The level's exit is a single point; only renders if it's on this
+  // page. Reaching it currently transitions back to page 0 (i.e.
+  // restart the level); a future phase swaps that for a proper
+  // "level complete" UX.
+  private buildExit(): void {
+    const exit = this.loadedLevel.exit;
+    if (!exit || exit.page !== this.currentPageIndex) {
+      return;
+    }
+    const x = (exit.x + 0.5) * TILE_SIZE;
+    const y = (exit.y + 0.5) * TILE_SIZE;
+    this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_EXIT);
+    this.add
+      .text(x, y, 'EXIT', {
+        color: '#000000',
+        fontSize: '14px',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    this.exit = { x, y, targetPage: 0 };
+  }
+
+  // AABB-style trigger check for teleports + exit (same pattern as
+  // coins / keys). No-op while a transition is already in progress so
+  // a single touch can't queue multiple page jumps.
+  private checkPageTriggers(): void {
+    if (this.transitioning) {
+      return;
+    }
+    const px = this.player.x;
+    const py = this.player.y;
+    const t = TILE_SIZE * 0.5;  // half-tile threshold; exit + teleport are full-cell
+    for (const tp of this.teleports) {
+      if (Math.abs(tp.x - px) < t && Math.abs(tp.y - py) < t) {
+        this.transitionToPage(tp.targetPage);
+        return;
+      }
+    }
+    if (this.exit && Math.abs(this.exit.x - px) < t && Math.abs(this.exit.y - py) < t) {
+      this.transitionToPage(this.exit.targetPage);
+    }
+  }
+
+  // Cross-page transition. Fades to black, then scene.restart with the
+  // target page index — restart re-runs init/preload/create cleanly,
+  // tearing down all entities for free. The new scene fades in via the
+  // shouldFadeIn flag we pass through init data.
+  private transitionToPage(targetPage: number): void {
+    if (
+      targetPage < 0 ||
+      targetPage >= this.loadedLevel.pages.length ||
+      this.transitioning
+    ) {
+      return;
+    }
+    this.transitioning = true;
+    this.tweens.add({
+      targets: this.fadeOverlay,
+      alpha: 1,
+      duration: FADE_DURATION_MS,
+      onComplete: () => {
+        this.scene.restart({ pageIndex: targetPage, fadeIn: true });
+      },
+    });
   }
 
   private ensureWallTexture(): void {
