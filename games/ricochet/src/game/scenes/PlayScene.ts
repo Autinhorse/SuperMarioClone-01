@@ -20,6 +20,7 @@ import { Cannon } from '../entities/Cannon';
 import { Gear } from '../entities/Gear';
 import { CONVEYOR_DIR_DATA_KEY, Player, PlayerState } from '../entities/Player';
 import { Portal } from '../entities/Portal';
+import { Turret } from '../entities/Turret';
 import { validateLevel } from '../../shared/level-format/load';
 import type { CardinalDir, PageData } from '../../shared/level-format/types';
 
@@ -92,6 +93,10 @@ export class PlayScene extends Phaser.Scene {
   // Portals: paired teleporters. Same "bullets pass through, only player
   // triggers" pattern as gears. Tick ticks the cooldown timers.
   private portals: Portal[] = [];
+  // Turrets: like cannons (wall-like, fire on a timer) but the barrel
+  // tracks the player. Built before the player exists, so PlayScene
+  // calls turret.setPlayer() once player is constructed.
+  private turrets: Turret[] = [];
   private debugText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
 
@@ -137,6 +142,7 @@ export class PlayScene extends Phaser.Scene {
     this.keyWalls = this.physics.add.staticGroup();
     this.gears = [];
     this.portals = [];
+    this.turrets = [];
     this.buildWalls(page);
     this.buildSpikes(page);
     this.buildGlassWalls(page);
@@ -147,6 +153,7 @@ export class PlayScene extends Phaser.Scene {
     this.buildKeys(page);
     this.buildGears(page);
     this.buildPortals(page);
+    this.buildTurrets(page);
 
     // Input wiring — the player gets references to the cursor keys and
     // jump key so it doesn't have to reach into the scene's input plugin.
@@ -160,6 +167,11 @@ export class PlayScene extends Phaser.Scene {
     const spawnX = (page.spawn.x + 0.5) * TILE_SIZE;
     const spawnY = (page.spawn.y + 0.5) * TILE_SIZE;
     this.player = new Player(this, spawnX, spawnY, cursors, jumpKey);
+    // Turrets are built before the player; hand them the player ref now
+    // so trackPlayer() can read its position each frame.
+    for (const turret of this.turrets) {
+      turret.setPlayer(this.player);
+    }
 
     this.physics.add.collider(this.player, this.walls);
     this.physics.add.overlap(this.player, this.hazards, () => this.player.die());
@@ -258,6 +270,9 @@ export class PlayScene extends Phaser.Scene {
     }
     for (const portal of this.portals) {
       portal.tick(dt);
+    }
+    for (const turret of this.turrets) {
+      turret.tick(dt);
     }
     // Tick all live bullets (decrements ignoreTimer + lifetime).
     this.bullets.getChildren().forEach((b) => {
@@ -553,6 +568,26 @@ export class PlayScene extends Phaser.Scene {
       if (wall.getData('color') === colorIdx) {
         wall.destroy();
       }
+    }
+  }
+
+  private buildTurrets(page: PageData): void {
+    if (!page.turrets) {
+      return;
+    }
+    for (const t of page.turrets) {
+      const turret = new Turret(
+        this,
+        t.x,
+        t.y,
+        t.period,
+        t.bullet_speed,
+        this.bullets,
+      );
+      // Add to walls group so the player + bullets collide with the
+      // turret's cell exactly like with a cannon.
+      this.walls.add(turret);
+      this.turrets.push(turret);
     }
   }
 

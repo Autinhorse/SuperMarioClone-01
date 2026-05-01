@@ -23,6 +23,7 @@ export const TERMINAL_VELOCITY_TILES = 40.0;  // fall-speed cap, tiles/sec
 export const JUMP_HEIGHT_TILES = 2.0;         // peak above the floor
 export const REBOUND_DISTANCE_TILES = 0.2;    // wall-bounce backoff
 export const CONVEYOR_SPEED_TILES = 4.0;      // horizontal push while standing on a conveyor
+export const TURRET_TRACK_SPEED = 3.0;        // rad/sec — how fast the turret barrel rotates toward the player
 
 // ----- Timing (seconds) -----
 
@@ -56,6 +57,7 @@ export const COLOR_GLASS = 0x8cd9ff;          // light cyan (matches Godot COLOR
 export const COLOR_CONVEYOR = 0x666c8c;       // muted blue-gray (matches Godot COLOR_CONVEYOR)
 export const COLOR_CANNON = 0x4d4d52;         // dark gray (matches Godot COLOR_CANNON)
 export const COLOR_CANNON_BARREL = 0x8c8c99;  // lighter gray (matches Godot COLOR_CANNON_BARREL)
+export const COLOR_TURRET_HUB = 0xd9d933;     // bright yellow — marks the rotation pivot for turrets
 export const COLOR_BULLET = 0xf27240;         // orange-red (matches Godot bullet color)
 export const COLOR_GEAR = 0x999999;           // medium gray (the disc)
 export const COLOR_GEAR_SPOKE = 0x333333;     // dark gray (the rotating spokes)
