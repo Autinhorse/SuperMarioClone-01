@@ -27,6 +27,7 @@ import { Portal } from '../entities/Portal';
 import { Turret } from '../entities/Turret';
 import { validateLevel } from '../../shared/level-format/load';
 import type { CardinalDir, LevelData, PageData } from '../../shared/level-format/types';
+import { postToParent } from '../../embed';
 
 // Cell-distance pickup struct used for teleport / exit triggers (manual
 // distance check, mirroring the no-body coin/key pattern). Half-tile
@@ -173,6 +174,11 @@ export class PlayScene extends Phaser.Scene {
   // Persists across cross-page transitions so the trigger fires on
   // the correct campaign step when the player exits.
   private campaignLevel = 0;
+  // Set when the game is running embedded inside the LevelCraft web
+  // platform (iframe). Replaces MenuScene/EditScene exit paths with a
+  // postMessage protocol — see src/embed.ts. Persists across restarts
+  // (death-replay, cross-page, completion-replay).
+  private embedLevelId: string | null = null;
   // Black overlay for transition fade-out / fade-in. Pinned to the
   // camera (scrollFactor 0) so it covers the whole viewport regardless
   // of the centered-room camera scroll.
@@ -198,6 +204,7 @@ export class PlayScene extends Phaser.Scene {
     levelPath?: string;
     editorDirty?: boolean;
     campaignLevel?: number;
+    embedLevelId?: string;
   }): void {
     this.startPageIndex = data?.pageIndex ?? DEFAULT_PAGE_INDEX;
     this.shouldFadeIn = data?.fadeIn ?? false;
@@ -208,6 +215,7 @@ export class PlayScene extends Phaser.Scene {
     this.levelPath = data?.levelPath ?? null;
     this.editorDirty = data?.editorDirty ?? false;
     this.campaignLevel = data?.campaignLevel ?? 0;
+    this.embedLevelId = data?.embedLevelId ?? null;
   }
 
   preload(): void {
@@ -421,12 +429,25 @@ export class PlayScene extends Phaser.Scene {
     // Always show a back button during play. Editor-launched runs go
     // straight back to the editor (fast iterate); campaign / standalone
     // runs prompt with a Continue / Exit dialog so the player doesn't
-    // lose progress to a stray click.
-    this.buildBackButton();
+    // lose progress to a stray click. Embedded runs hide the in-game
+    // back button entirely — the host page owns navigation.
+    if (!this.embedLevelId) {
+      this.buildBackButton();
+    }
     // Tear down DOM additions on shutdown so they don't linger after a
     // scene switch (back to editor / menu) or hot reload.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyBackButton());
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroyBackButton());
+
+    // Embedded mode: tell the host this play session has begun. Fires
+    // on initial boot and on post-clear replay, but NOT on cross-page
+    // transitions (those carry shouldFadeIn=true and aren't a fresh
+    // attempt — within-session navigation only). Also skipped when the
+    // play session was launched from the editor (the author test-
+    // playing their own draft shouldn't inflate play_count).
+    if (this.embedLevelId && !this.shouldFadeIn && !this.launchedFromEditor) {
+      postToParent('play-started', { levelId: this.embedLevelId });
+    }
   }
 
   private buildBackButton(): void {
@@ -449,6 +470,7 @@ export class PlayScene extends Phaser.Scene {
           pageIndex: this.currentPageIndex,
           levelPath: this.levelPath ?? undefined,
           dirty: this.editorDirty,
+          embedLevelId: this.embedLevelId ?? undefined,
         });
       } else {
         this.showExitConfirm();
@@ -1205,13 +1227,49 @@ export class PlayScene extends Phaser.Scene {
             pageIndex: this.loadedLevel.exit.page,
             levelPath: this.levelPath ?? undefined,
             dirty: this.editorDirty,
+            embedLevelId: this.embedLevelId ?? undefined,
           });
+        } else if (this.embedLevelId) {
+          this.showEmbedComplete();
         } else if (this.campaignLevel > 0) {
           this.showCampaignComplete();
         } else {
           this.showLevelComplete();
         }
       },
+    });
+  }
+
+  // Embedded-mode completion. Notifies the host (clear_count++) and
+  // shows an in-game Replay button. The host owns "back to browse" /
+  // "next level" navigation, so we don't render those.
+  private showEmbedComplete(): void {
+    if (this.embedLevelId) {
+      postToParent('level-completed', { levelId: this.embedLevelId });
+    }
+    const dialog = document.createElement('div');
+    dialog.className = 'editor-modal';
+    dialog.setAttribute('data-modal-role', 'embed-complete');
+    dialog.innerHTML = `
+      <div class="editor-modal-backdrop"></div>
+      <div class="editor-modal-content">
+        <p>Level complete!</p>
+        <div class="editor-modal-actions">
+          <button data-modal-action="replay" class="editor-modal-btn editor-modal-btn-primary">Play again</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    dialog.addEventListener('click', (ev) => {
+      const t = ev.target as HTMLElement;
+      if (t.getAttribute('data-modal-action') === 'replay') {
+        dialog.remove();
+        this.scene.restart({
+          pageIndex: 0,
+          level: this.providedLevel ?? this.loadedLevel,
+          embedLevelId: this.embedLevelId ?? undefined,
+        });
+      }
     });
   }
 
@@ -1316,12 +1374,14 @@ export class PlayScene extends Phaser.Scene {
           levelPath?: string;
           editorDirty?: boolean;
           campaignLevel?: number;
+          embedLevelId?: string;
         } = { pageIndex: targetPage, fadeIn: true };
         if (this.providedLevel) restartData.level = this.providedLevel;
         if (this.launchedFromEditor) restartData.fromEditor = true;
         if (this.levelPath) restartData.levelPath = this.levelPath;
         if (this.editorDirty) restartData.editorDirty = this.editorDirty;
         if (this.campaignLevel) restartData.campaignLevel = this.campaignLevel;
+        if (this.embedLevelId) restartData.embedLevelId = this.embedLevelId;
         this.scene.restart(restartData);
       },
     });

@@ -6,6 +6,7 @@ import {
   TILE_SIZE,
 } from '../config/feel';
 import { validateLevel } from '../../shared/level-format/load';
+import { saveLevelToHost } from '../../embed';
 import type {
   CardinalDir,
   Cannon as CannonData,
@@ -192,6 +193,12 @@ export class EditScene extends Phaser.Scene {
   // round-tripped through PlayScene so it survives play-testing.
   private dirty = false;
 
+  // Set when embedded inside the LevelCraft web platform. Replaces the
+  // dev-server `/api/save-level` flow with a postMessage round-trip
+  // (the host page calls Supabase). Persists across Play → Edit
+  // round-trips so save still routes through the host afterward.
+  private embedLevelId: string | null = null;
+
   constructor() {
     super('EditScene');
   }
@@ -201,6 +208,7 @@ export class EditScene extends Phaser.Scene {
     pageIndex?: number;
     levelPath?: string;
     dirty?: boolean;
+    embedLevelId?: string;
   }): void {
     // Phaser scenes are SINGLETONS — `scene.start()` re-runs the
     // lifecycle methods on the SAME instance, so any field we don't
@@ -220,6 +228,7 @@ export class EditScene extends Phaser.Scene {
     // and comes back. A fresh load from disk passes no `dirty`, so
     // the default-false is correct there.
     this.dirty = data?.dirty ?? false;
+    this.embedLevelId = data?.embedLevelId ?? null;
     // Always reset transient gesture state — neither type should
     // ever survive a scene restart anyway, but be explicit.
     this.placementDragState = null;
@@ -402,14 +411,30 @@ export class EditScene extends Phaser.Scene {
   // still recoverable when the editor is opened against an ad-hoc
   // level (e.g. DEFAULT_LEVEL_URL).
   private async saveLevel(): Promise<boolean> {
+    const saveBtn = this.palette?.querySelector(
+      '[data-action="save"]',
+    ) as HTMLButtonElement | null;
+
+    // Embed path: hand the level back to the host page, which calls
+    // Supabase under the user's session (RLS enforces ownership).
+    if (this.embedLevelId) {
+      const result = await saveLevelToHost(this.embedLevelId, this.level);
+      if (!result.ok) {
+        alert(`Save failed: ${result.error}`);
+        return false;
+      }
+      this.dirty = false;
+      this.flashSaveButton(saveBtn);
+      return true;
+    }
+
+    // Standalone path: dev-server middleware writes back to disk.
+    // No levelPath → fall back to a download so changes aren't lost.
     if (!this.levelPath) {
       this.downloadLevel();
       this.dirty = false;
       return true;
     }
-    const saveBtn = this.palette?.querySelector(
-      '[data-action="save"]',
-    ) as HTMLButtonElement | null;
     try {
       const response = await fetch('/api/save-level', {
         method: 'POST',
@@ -517,8 +542,8 @@ export class EditScene extends Phaser.Scene {
         <button data-action="add-page" class="palette-btn">+ Page</button>
         <button data-action="del-page" class="palette-btn">− Page</button>
       </div>
-      <div class="palette-actions">
-        <button data-action="menu" class="palette-btn">Menu</button>
+      <div class="palette-actions"${this.embedLevelId ? ' style="grid-template-columns: 1fr"' : ''}>
+        ${this.embedLevelId ? '' : '<button data-action="menu" class="palette-btn">Menu</button>'}
         <button data-action="save" class="palette-btn">Save</button>
       </div>
       <button data-action="play" class="palette-btn palette-btn-primary palette-btn-full">▶ Play</button>
@@ -814,6 +839,7 @@ export class EditScene extends Phaser.Scene {
           fromEditor: true,
           levelPath: this.levelPath,
           editorDirty: this.dirty,
+          embedLevelId: this.embedLevelId ?? undefined,
         });
         return;
       case 'gear-finish-open':

@@ -1,0 +1,7 @@
+-- Superseded by 02_seed_level_data.mjs (Node script that loads real
+-- level JSON content from games/ricochet/public/levels/ instead of
+-- empty data: '{}').
+--
+-- Kept as a placeholder so the file path doesn't 404 in scripts. To
+-- re-seed, run:
+--   node web/supabase/seeds/02_seed_level_data.mjs

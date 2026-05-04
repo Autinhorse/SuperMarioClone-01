@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces */
+  --color-paper: #faf3dc;
+  --color-ink: #1a1b2e;
+  --color-card: #ffffff;
+
+  /* Accents */
+  --color-brand-yellow: #ffc93c;
+  --color-brand-purple: #9b6fe6;
+  --color-brand-green: #9cca4f;
+  --color-brand-coral: #e85d5d;
+  --color-brand-orange: #f18a4d;
+  --color-brand-sky: #7bb6e8;
+
+  /* Fonts (provided by next/font in layout.tsx) */
+  --font-display: var(--font-fredoka);
+  --font-sans: var(--font-nunito);
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Default body font */
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
