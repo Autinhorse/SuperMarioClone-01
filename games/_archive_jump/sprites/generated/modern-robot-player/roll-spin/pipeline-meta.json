@@ -1,0 +1,283 @@
+{
+  "target": "player",
+  "mode": "roll-spin",
+  "prompt": "",
+  "role": "",
+  "input": "D:\\My_Works\\SuperMarioClone-01\\SuperMarioClone-01\\games\\_archive_jump\\sprites\\generated\\modern-robot-player\\roll-spin\\raw-sheet.png",
+  "threshold": 100,
+  "edge_threshold": 150,
+  "duration": 90,
+  "rows": 2,
+  "cols": 4,
+  "cell_size": 128,
+  "fit_scale": 0.9,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "center",
+  "shared_scale": true,
+  "component_mode": "all",
+  "component_padding": 20,
+  "min_component_area": 250,
+  "edge_touch_margin": 2,
+  "frame_labels": [
+    "roll-spin-1",
+    "roll-spin-2",
+    "roll-spin-3",
+    "roll-spin-4",
+    "roll-spin-5",
+    "roll-spin-6",
+    "roll-spin-7",
+    "roll-spin-8"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        443,
+        443
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        126,
+        107,
+        341,
+        391
+      ],
+      "edge_touch": false,
+      "output_size": [
+        87,
+        115
+      ],
+      "paste_position": [
+        20,
+        6
+      ]
+    },
+    {
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        443,
+        0,
+        886,
+        443
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        107,
+        143,
+        308,
+        384
+      ],
+      "edge_touch": false,
+      "output_size": [
+        81,
+        97
+      ],
+      "paste_position": [
+        23,
+        15
+      ]
+    },
+    {
+      "grid": [
+        0,
+        2
+      ],
+      "source_box": [
+        886,
+        0,
+        1329,
+        443
+      ],
+      "component_mode": "all",
+      "component_count": 1,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        75,
+        179,
+        273,
+        377
+      ],
+      "edge_touch": false,
+      "output_size": [
+        80,
+        80
+      ],
+      "paste_position": [
+        24,
+        24
+      ]
+    },
+    {
+      "grid": [
+        0,
+        3
+      ],
+      "source_box": [
+        1329,
+        0,
+        1772,
+        443
+      ],
+      "component_mode": "all",
+      "component_count": 3,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        28,
+        159,
+        266,
+        371
+      ],
+      "edge_touch": false,
+      "output_size": [
+        96,
+        85
+      ],
+      "paste_position": [
+        16,
+        21
+      ]
+    },
+    {
+      "grid": [
+        1,
+        0
+      ],
+      "source_box": [
+        0,
+        443,
+        443,
+        886
+      ],
+      "component_mode": "all",
+      "component_count": 3,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        117,
+        91,
+        365,
+        292
+      ],
+      "edge_touch": false,
+      "output_size": [
+        100,
+        81
+      ],
+      "paste_position": [
+        14,
+        23
+      ]
+    },
+    {
+      "grid": [
+        1,
+        1
+      ],
+      "source_box": [
+        443,
+        443,
+        886,
+        886
+      ],
+      "component_mode": "all",
+      "component_count": 3,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        98,
+        89,
+        330,
+        308
+      ],
+      "edge_touch": false,
+      "output_size": [
+        94,
+        88
+      ],
+      "paste_position": [
+        17,
+        20
+      ]
+    },
+    {
+      "grid": [
+        1,
+        2
+      ],
+      "source_box": [
+        886,
+        443,
+        1329,
+        886
+      ],
+      "component_mode": "all",
+      "component_count": 2,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        74,
+        95,
+        299,
+        297
+      ],
+      "edge_touch": false,
+      "output_size": [
+        91,
+        81
+      ],
+      "paste_position": [
+        18,
+        23
+      ]
+    },
+    {
+      "grid": [
+        1,
+        3
+      ],
+      "source_box": [
+        1329,
+        443,
+        1772,
+        886
+      ],
+      "component_mode": "all",
+      "component_count": 2,
+      "selected_component_area": null,
+      "selected_component_bbox": null,
+      "crop_bbox": [
+        38,
+        90,
+        268,
+        309
+      ],
+      "edge_touch": false,
+      "output_size": [
+        93,
+        88
+      ],
+      "paste_position": [
+        17,
+        20
+      ]
+    }
+  ],
+  "edge_touch_frames": []
+}

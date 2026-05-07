@@ -1,12 +1,6 @@
 import Phaser from 'phaser';
 
-import {
-  COLOR_CANNON,
-  COLOR_CANNON_BARREL,
-  COLOR_TURRET_HUB,
-  TILE_SIZE,
-  TURRET_TRACK_SPEED,
-} from '../config/feel';
+import { TILE_SIZE, TURRET_TRACK_SPEED } from '../config/feel';
 import { Bullet } from './Bullet';
 import type { Player } from './Player';
 
@@ -14,9 +8,9 @@ import type { Player } from './Player';
 // barrel that rotates toward the player at TURRET_TRACK_SPEED rad/s,
 // firing a bullet in the barrel's CURRENT facing every `period` seconds.
 //
-// Built as two nested containers:
-//   Turret (no rotation — its rectangle base + body must stay axis-aligned)
-//     └── barrel (rotates) — barrel-rect + bright hub
+// Built as a Container holding two children:
+//   base   — turret-base.png at full cell, never rotates
+//   barrel — turret-cannon.png, rotated each frame to face the player
 //
 // The bullet's ignoreBody/ignoreTimer is set to `this` for a brief window
 // after firing, because at oblique angles the bullet's bbox briefly
@@ -27,7 +21,7 @@ import type { Player } from './Player';
 export class Turret extends Phaser.GameObjects.Container {
   declare body: Phaser.Physics.Arcade.StaticBody;
 
-  private readonly barrel: Phaser.GameObjects.Container;
+  private readonly barrel: Phaser.GameObjects.Image;
   private readonly period: number;
   private readonly bulletSpeedPx: number;
   private readonly bulletGroup: Phaser.GameObjects.Group;
@@ -47,28 +41,18 @@ export class Turret extends Phaser.GameObjects.Container {
     super(scene, x, y);
     scene.add.existing(this);
 
-    // Base — full cell, dark, axis-aligned. Stays on this container so
-    // it doesn't rotate with the barrel.
-    this.add(scene.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLOR_CANNON));
+    // Base — full cell, axis-aligned (added first so the barrel renders
+    // on top). Container-relative coords; (0,0) = container's world position.
+    const base = scene.add.image(0, 0, 'turret-base');
+    base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+    this.add(base);
 
-    // Barrel sub-container — rotates each frame to face the player. New
-    // Container without scene.add (no display-list churn — adding to
-    // `this` via this.add wires it up).
-    this.barrel = new Phaser.GameObjects.Container(scene, 0, 0);
+    // Barrel — image natively points right (rotation 0). Rotated each
+    // frame in trackPlayer to face the player. Sized at ~full cell so
+    // the barrel pokes out of the cell at the firing angle.
+    this.barrel = scene.add.image(0, 0, 'turret-cannon');
+    this.barrel.setDisplaySize(TILE_SIZE, TILE_SIZE);
     this.add(this.barrel);
-    // Barrel rect along +x so rotation 0 = pointing right. Length = half
-    // tile, so the barrel pokes out of the cell when rotation matches a
-    // cardinal direction.
-    const barrelRect = scene.add.rectangle(
-      TILE_SIZE * 0.30,         // half-length offset (so left edge of rect = pivot)
-      0,
-      TILE_SIZE * 0.60,         // total length
-      TILE_SIZE * 0.20,         // width (perpendicular to barrel axis)
-      COLOR_CANNON_BARREL,
-    );
-    this.barrel.add(barrelRect);
-    // Bright hub at the pivot — makes the rotation visible at a glance.
-    this.barrel.add(scene.add.circle(0, 0, TILE_SIZE * 0.16, COLOR_TURRET_HUB));
 
     // Static body covering the cell — the player + bullets collide with
     // this exactly like a wall. Container has no getTopLeft/getCenter, so

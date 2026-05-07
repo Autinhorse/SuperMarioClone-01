@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import { COLOR_GEAR, COLOR_GEAR_HUB, COLOR_GEAR_SPOKE } from '../config/feel';
+import { TILE_SIZE } from '../config/feel';
 
 // Path-following hazard. Built as a Container so the disc + spokes + hub
 // can all rotate together via Container.rotation. Movement is authored:
@@ -45,19 +45,14 @@ export class Gear extends Phaser.GameObjects.Container {
     super(scene, homeX, homeY);
     scene.add.existing(this);
 
-    // Build visual (children rotate with the container).
-    // Disc.
-    this.add(scene.add.circle(0, 0, radiusPx, COLOR_GEAR));
-    // Spokes — a "+" inside the disc, slightly inset so it reads as
-    // gear teeth even at small zoom.
-    const spokes = scene.add.graphics();
-    spokes.lineStyle(3, COLOR_GEAR_SPOKE, 1);
-    const reach = radiusPx * 0.9;
-    spokes.lineBetween(-reach, 0, reach, 0);
-    spokes.lineBetween(0, -reach, 0, reach);
-    this.add(spokes);
-    // Center hub (bright accent so the spin is visible).
-    this.add(scene.add.circle(0, 0, radiusPx * 0.22, COLOR_GEAR_HUB));
+    // Pick the texture variant by gear size. Diameter = 2 × radiusPx;
+    // size in tiles = diameter / TILE_SIZE. Levels constrain size to
+    // 1/2/3, mapping to gear_0/gear_1/gear_2 (1x/2x/3x art).
+    const sizeTiles = Math.round((radiusPx * 2) / TILE_SIZE);
+    const textureKey = `gear_${Math.max(0, Math.min(2, sizeTiles - 1))}`;
+    const sprite = scene.add.image(0, 0, textureKey);
+    sprite.setDisplaySize(radiusPx * 2, radiusPx * 2);
+    this.add(sprite);
 
     // Physics body — circular, centered on the container's origin.
     // setCircle's offset is from the body's TOP-LEFT corner, so to

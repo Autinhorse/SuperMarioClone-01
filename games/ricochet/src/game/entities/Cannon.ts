@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import { COLOR_CANNON, COLOR_CANNON_BARREL, TILE_SIZE } from '../config/feel';
+import { TILE_SIZE } from '../config/feel';
 import type { CardinalDir } from '../../shared/level-format/types';
 import { Bullet } from './Bullet';
 
@@ -17,18 +17,22 @@ const DIR_VECTORS: Record<CardinalDir, DirVector> = {
   right: { x: 1,  y: 0  },
 };
 
-// Barrel rect per direction. Coords are fractions of TILE_SIZE relative
-// to the cell's top-left; the barrel sticks out of the side facing the
-// firing direction. Lifted from the Godot _make_cannon helper.
-type Rect = { x: number; y: number; w: number; h: number };
-const BARREL_RECTS: Record<CardinalDir, Rect> = {
-  up:    { x: 0.35, y: 0,    w: 0.30, h: 0.50 },
-  down:  { x: 0.35, y: 0.50, w: 0.30, h: 0.50 },
-  left:  { x: 0,    y: 0.35, w: 0.50, h: 0.30 },
-  right: { x: 0.50, y: 0.35, w: 0.50, h: 0.30 },
+// Native cannon art is 180×180 (a 144 cell + 36 of barrel sticking out
+// one side). Display at TILE_SIZE × (180/144) = 1.25 tiles so the cell
+// portion lines up with the world grid.
+const CANNON_DISPLAY = TILE_SIZE * (180 / 144);
+
+// Image rotation per firing direction. Native art has the barrel
+// pointing right (= rotation 0); each cardinal is a quarter-turn from
+// there.
+const DIR_ROTATION: Record<CardinalDir, number> = {
+  right: 0,
+  down: Math.PI / 2,
+  left: Math.PI,
+  up: -Math.PI / 2,
 };
 
-export class Cannon extends Phaser.GameObjects.Rectangle {
+export class Cannon extends Phaser.GameObjects.Image {
   declare body: Phaser.Physics.Arcade.StaticBody;
 
   private readonly dir: CardinalDir;
@@ -48,28 +52,23 @@ export class Cannon extends Phaser.GameObjects.Rectangle {
   ) {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    super(scene, x, y, TILE_SIZE, TILE_SIZE, COLOR_CANNON);
+    super(scene, x, y, 'cannon');
+    this.setDisplaySize(CANNON_DISPLAY, CANNON_DISPLAY);
+    this.setRotation(DIR_ROTATION[dir]);
     scene.add.existing(this);
     scene.physics.add.existing(this, true);  // static body — blocks the player
+    // Body init uses displayWidth (= 1.25 tile); shrink to the cell-sized
+    // central portion so the player only collides with the cell, not
+    // the barrel poking out. setSize(_, _, true) re-centers the body
+    // on the game object using offset = (displayWidth/2 - halfWidth, …)
+    // → lands the body exactly on the cell.
+    this.body.setSize(TILE_SIZE, TILE_SIZE, true);
 
     this.dir = dir;
     this.period = period;
     this.bulletSpeedPx = bulletSpeedTiles * TILE_SIZE;
     this.bulletGroup = bulletGroup;
     this.timer = period;  // first shot delayed by period
-
-    // Barrel visual (no body — purely cosmetic; the cell-sized cannon
-    // body already covers the cell for collision). Sticks out the side
-    // facing `dir`.
-    const cellTL = { x: x - TILE_SIZE * 0.5, y: y - TILE_SIZE * 0.5 };
-    const r = BARREL_RECTS[dir];
-    scene.add.rectangle(
-      cellTL.x + (r.x + r.w * 0.5) * TILE_SIZE,
-      cellTL.y + (r.y + r.h * 0.5) * TILE_SIZE,
-      r.w * TILE_SIZE,
-      r.h * TILE_SIZE,
-      COLOR_CANNON_BARREL,
-    );
   }
 
   // Called by PlayScene each frame.

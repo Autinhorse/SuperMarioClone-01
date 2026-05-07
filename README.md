@@ -69,24 +69,15 @@ Wish me luck.
 * [**001:** Day 1 - The First 3 Hours of Ricochet ](./games/ricochet/devlogs/en/001.Day%201%20-%20The%20first%20three%20hours%20of%20Ricochet.md)
 * [**002:** Day 2 - Core Mechanics & Editor Foundations ](./games/ricochet/devlogs/en/002.Day%202%20-%20Core%20Mechanics%20&%20Editor%20Foundations.md)
 * [**003:** Day 3 - Editor Optimizations and Additional Map Elements ](./games/ricochet/devlogs/en/003.Day%203%20-%20Editor%20Optimizations%20and%20Additional%20Map%20Elements.md)
-* [**004:** Day 4 and 5 - Massive Overhaul, Core Game Mechanics Finished ](./games/ricochet/devlogs/en/004.%20Day%204%20and%205%20-%20Massive%20Overhaul,%20Core%20Game%20Mechanics%20Finishedmd)
+* [**004:** Day 4 and 5 - Massive Overhaul, Core Game Mechanics Finished ](./games/ricochet/devlogs/en/004.Day%204%20and%205%20-%20Massive%20Overhaul,%20Core%20Game%20Mechanics%20Finished.md)
+* [**004:** Day 6 - Site Live in Hours ](./games/ricochet/devlogs/en/005.Day%206%20-%20Site%20Live%20in%20Hours.md)
+* [**004:** Day 7 and 8 - Art Asset Integration ](./games/ricochet/devlogs/en/006.Day%207%20and%208%20-%20Art%20Asset%20Integration.md)
 
 *(More updates coming soon...)*
 
 ---
 Youtube Channel Available here:
 [![Watch the Ricochet Series](https://img.youtube.com/vi/OV4my9E5MFs/maxresdefault.jpg)](https://www.youtube.com/playlist?list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv)
-
----
-#### The Claude Transcripts
-
-Up until now, my default language with Claude has always been Chinese. But for this project, I'm pushing myself to work entirely in English. I'll be dumping the complete, raw chat histories from the VS Code CLI here every day. Just in case anyone is curious to see exactly how this game is being willed into existence, prompt by prompt and step by step.
-
-[Conversation 0428: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-04028.JSONL)
-[Conversation 0429: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-04029.JSONL)
-[Conversation 0430: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-04030.jsonl)
-[Conversation 0501: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-0501.jsonl)
-[Conversation 0502: Raw Log](./games/ricochet/devlogs/conversation%20with%20claude%202026-0502.jsonl)
 
 
 ---

@@ -2,18 +2,8 @@ import Phaser from 'phaser';
 
 import {
   TILE_SIZE,
-  COLOR_WALL,
-  COLOR_SPIKE,
-  COLOR_SPIKE_PLATE,
-  COLOR_COIN,
-  COLOR_GLASS,
-  COLOR_CONVEYOR,
-  COLOR_TELEPORT,
-  COLOR_EXIT,
   COLOR_BACKGROUND,
   COLOR_GRID,
-  KEY_COLORS_LIGHT,
-  KEY_COLORS_DARK,
   DEFAULT_LEVEL_URL,
   DEFAULT_PAGE_INDEX,
   FADE_DURATION_MS,
@@ -26,8 +16,9 @@ import { CONVEYOR_DIR_DATA_KEY, Player, PlayerState } from '../entities/Player';
 import { Portal } from '../entities/Portal';
 import { Turret } from '../entities/Turret';
 import { validateLevel } from '../../shared/level-format/load';
-import type { CardinalDir, LevelData, PageData } from '../../shared/level-format/types';
+import type { CardinalDir, ConveyorDir, LevelData, PageData } from '../../shared/level-format/types';
 import { postToParent } from '../../embed';
+import { conveyorPieceFor, loadSprites } from '../sprites';
 
 // Cell-distance pickup struct used for teleport / exit triggers (manual
 // distance check, mirroring the no-body coin/key pattern). Half-tile
@@ -50,11 +41,28 @@ type Rect = { x: number; y: number; w: number; h: number };
 // thinner than ~16px let a single fast frame put the player on the
 // far side, where Phaser then pushes them deeper instead of back. 24px
 // has comfortable margin and gives a clean 50/50 split.
+// Each timed spike provides its own toggle callback — directional
+// spikes flip one teeth visual + its body enable, while spike-blocks
+// fan out across 4 teeth visuals and the hazard body. The callback
+// abstraction means update()'s timer loop is the same for both.
+type TimedSpikeToggle = (firing: boolean) => void;
+
 const SPIKE_LAYOUT: Record<CardinalDir, { plate: Rect; spike: Rect }> = {
   up:    { plate: { x: 0,   y: 0.5, w: 1,   h: 0.5 }, spike: { x: 0,   y: 0,   w: 1,   h: 0.5 } },
   down:  { plate: { x: 0,   y: 0,   w: 1,   h: 0.5 }, spike: { x: 0,   y: 0.5, w: 1,   h: 0.5 } },
   left:  { plate: { x: 0.5, y: 0,   w: 0.5, h: 1   }, spike: { x: 0,   y: 0,   w: 0.5, h: 1   } },
   right: { plate: { x: 0,   y: 0,   w: 0.5, h: 1   }, spike: { x: 0.5, y: 0,   w: 0.5, h: 1   } },
+};
+
+// Rotation applied to the spike_1 teeth image per dir. Native art has
+// teeth pointing up; rotate clockwise 90° per quarter-turn to face
+// right/down/left. The arcade body remains axis-aligned (set explicitly
+// in makeSpikeTeeth) since arcade physics has no rotated-body support.
+const SPIKE_ROTATION: Record<CardinalDir, number> = {
+  up: 0,
+  right: Math.PI / 2,
+  down: Math.PI,
+  left: -Math.PI / 2,
 };
 
 const LEVEL_KEY = 'level-default';
@@ -133,7 +141,7 @@ export class PlayScene extends Phaser.Scene {
   // visual + the static body's `enable` flag so collision and overlap
   // both stop while retracted.
   private timedSpikes: Array<{
-    visual: Phaser.GameObjects.Rectangle;
+    onToggle: TimedSpikeToggle;
     duration: number;
     downtime: number;
     firing: boolean;
@@ -236,6 +244,12 @@ export class PlayScene extends Phaser.Scene {
         : DEFAULT_LEVEL_URL;
       this.load.json(LEVEL_KEY, url);
     }
+
+    // All visual sprites — shared with EditScene via the helper. Loaded
+    // native (144×144 for most, 180×180 for cannon, 1448×1086 for the
+    // background); each render call sets displaySize so visuals match
+    // the 48px world grid.
+    loadSprites(this);
   }
 
   create(): void {
@@ -259,8 +273,9 @@ export class PlayScene extends Phaser.Scene {
     const offsetY = (this.scale.gameSize.height - rows * TILE_SIZE) / 2;
     this.cameras.main.setScroll(-offsetX, -offsetY);
 
+    this.ensureAnimations();
+    this.drawBackground();
     this.drawGridBackground(cols, rows);
-    this.ensureWallTexture();
 
     this.walls = this.physics.add.staticGroup();
     this.hazards = this.physics.add.staticGroup();
@@ -326,7 +341,7 @@ export class PlayScene extends Phaser.Scene {
       this.player,
       this.directionalSpikes,
       undefined,
-      (_p, spike) => this.processDirectionalSpike(spike as Phaser.GameObjects.Rectangle),
+      (_p, spike) => this.processDirectionalSpike(spike as Phaser.GameObjects.Image),
     );
     // Glass walls: collide normally; the callback starts the break timer
     // on first contact and ignores subsequent contacts until the wall
@@ -341,10 +356,13 @@ export class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.killableWalls, () => this.player.die());
     // (Coin pickup is handled manually in update() via distance check —
     // see the field comment on `coins`.) Pre-compute the AABB threshold:
-    // half player width (TILE_SIZE/2) plus half coin width (0.55 * TILE_SIZE / 2).
-    this.coinPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.275;
-    // Same trick for keys (radius 0.25 tile, so threshold = 0.5 + 0.25).
-    this.keyPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.25;
+    // half player width (TILE_SIZE/2) plus half coin width (0.825 * TILE_SIZE / 2).
+    this.coinPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.4125;
+    // Half player width + half key display size (key now renders at
+    // 1.1875 tile to match the visible art, so the pickup reach grows
+    // accordingly — picking up a key visually overlapping the player
+    // shouldn't require the player to be dead-center on it).
+    this.keyPickupThreshold = TILE_SIZE * 0.5 + TILE_SIZE * 0.59375;
     // Key walls are walls — block the player. Bullet despawn against
     // them is added below alongside the other wall-like groups.
     this.physics.add.collider(this.player, this.keyWalls);
@@ -563,9 +581,7 @@ export class PlayScene extends Phaser.Scene {
       if (ts.phaseTimer <= 0) {
         ts.firing = !ts.firing;
         ts.phaseTimer = ts.firing ? ts.duration : ts.downtime;
-        ts.visual.setVisible(ts.firing);
-        const body = ts.visual.body as Phaser.Physics.Arcade.StaticBody;
-        body.enable = ts.firing;
+        ts.onToggle(ts.firing);
       }
     }
     // Tick all live bullets (decrements ignoreTimer + lifetime).
@@ -604,10 +620,12 @@ export class PlayScene extends Phaser.Scene {
   private makeCoin(col: number, row: number): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    // Smaller than a tile so the coin reads as a pickup, not a tile.
-    // No physics body — pickup is handled by checkCoinPickups() below.
-    const size = TILE_SIZE * 0.55;
-    const visual = this.add.rectangle(x, y, size, size, COLOR_COIN);
+    // Sized smaller than a tile so the coin reads as a pickup, not a
+    // tile. No physics body — pickup is handled by checkCoinPickups().
+    const size = TILE_SIZE * 0.825;
+    const visual = this.add.sprite(x, y, 'coin_0');
+    visual.setDisplaySize(size, size);
+    visual.play('coin_spin');
     this.coins.add(visual);
   }
 
@@ -621,7 +639,7 @@ export class PlayScene extends Phaser.Scene {
     const children = this.coins.getChildren();
     // Iterate backwards so destroying mid-loop doesn't skip elements.
     for (let i = children.length - 1; i >= 0; i--) {
-      const coin = children[i] as Phaser.GameObjects.Rectangle;
+      const coin = children[i] as Phaser.GameObjects.Sprite;
       if (Math.abs(coin.x - px) < t && Math.abs(coin.y - py) < t) {
         coin.destroy();
         this.coinCount += 1;
@@ -632,7 +650,14 @@ export class PlayScene extends Phaser.Scene {
   private makeWall(col: number, row: number): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    this.walls.create(x, y, 'wall');
+    // Native PNG is 144×144; scale display + body to TILE_SIZE so the
+    // visual matches the 48px world grid. updateFromGameObject syncs
+    // the static body to the new display size.
+    const wall = this.walls.create(x, y, 'wall') as Phaser.Physics.Arcade.Image;
+    wall.setDisplaySize(TILE_SIZE, TILE_SIZE);
+    const body = wall.body as Phaser.Physics.Arcade.StaticBody;
+    body.setSize(TILE_SIZE, TILE_SIZE);
+    body.updateFromGameObject();
   }
 
   private buildSpikes(page: PageData): void {
@@ -640,54 +665,112 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     for (const spike of page.spikes) {
-      const lethalRect = this.makeSpike(spike.x, spike.y, spike.dir);
-      this.maybeRegisterTimedSpike(lethalRect, spike.duration, spike.downtime);
+      const teeth = this.makeSpike(spike.x, spike.y, spike.dir);
+      this.maybeRegisterTimedSpike(
+        (firing) => {
+          teeth.setVisible(firing);
+          (teeth.body as Phaser.Physics.Arcade.StaticBody).enable = firing;
+        },
+        spike.duration,
+        spike.downtime,
+      );
     }
   }
 
-  private makeSpike(col: number, row: number, dir: CardinalDir): Phaser.GameObjects.Rectangle {
+  private makeSpike(col: number, row: number, dir: CardinalDir): Phaser.GameObjects.Image {
     const layout = SPIKE_LAYOUT[dir];
-    // Plate first (visually beneath the spike where they overlap), spike on top.
-    // Plate is a regular wall; the lethal rect is routed to
-    // `directionalSpikes` (separate group) and tagged with the spike
-    // direction so the velocity-aware collider can do its check.
-    this.makeSpikePart(col, row, layout.plate, COLOR_SPIKE_PLATE, this.walls);
-    const lethal = this.makeSpikePart(
-      col, row, layout.spike, COLOR_SPIKE, this.directionalSpikes,
-    );
-    lethal.setData('dir', dir);
-    return lethal;
+    // Plate body: invisible half-cell static body in `walls` so the
+    // non-lethal half still blocks the player. The full-cell spike_0
+    // base sprite below covers the cell visually for both halves.
+    this.makeInvisibleStaticBody(col, row, layout.plate, this.walls);
+    // Base sprite — full cell, rotated so the "open" side faces the
+    // lethal direction. Decorative; no body.
+    const cx = (col + 0.5) * TILE_SIZE;
+    const cy = (row + 0.5) * TILE_SIZE;
+    this.add
+      .image(cx, cy, 'spike_0')
+      .setDisplaySize(TILE_SIZE, TILE_SIZE)
+      .setRotation(SPIKE_ROTATION[dir]);
+    // Teeth: spike_1 at native aspect, on the lethal edge. Carries the
+    // half-cell static body for the velocity-aware kill check.
+    const teeth = this.makeSpikeTeeth(col, row, dir);
+    teeth.setData('dir', dir);
+    return teeth;
   }
 
-  private makeSpikePart(
+  // Invisible static body — used where the visible art is provided by
+  // a separate (no-body) sprite, but we still need a static body for
+  // collision (e.g. the wall half of a directional spike, the hazard
+  // body of a spike block).
+  private makeInvisibleStaticBody(
     col: number,
     row: number,
     rect: Rect,
-    color: number,
     group: Phaser.Physics.Arcade.StaticGroup,
   ): Phaser.GameObjects.Rectangle {
     const w = rect.w * TILE_SIZE;
     const h = rect.h * TILE_SIZE;
-    const x = col * TILE_SIZE + rect.x * TILE_SIZE + w / 2;
-    const y = row * TILE_SIZE + rect.y * TILE_SIZE + h / 2;
-
-    const visual = this.add.rectangle(x, y, w, h, color);
-    group.add(visual);
-    // After group.add gives the rect a static body, sync the body's size
-    // to the rect's actual dimensions (default static body uses display
-    // size — usually fine, but be explicit so future layout changes can't
-    // bite us).
-    const body = visual.body as Phaser.Physics.Arcade.StaticBody;
+    const x = col * TILE_SIZE + (rect.x + rect.w / 2) * TILE_SIZE;
+    const y = row * TILE_SIZE + (rect.y + rect.h / 2) * TILE_SIZE;
+    // alpha 0 → invisible; the rect still has display bounds so the
+    // group's body setup works normally.
+    const r = this.add.rectangle(x, y, w, h, 0x000000, 0);
+    group.add(r);
+    const body = r.body as Phaser.Physics.Arcade.StaticBody;
     body.setSize(w, h);
     body.updateFromGameObject();
+    return r;
+  }
+
+  private makeSpikeTeeth(col: number, row: number, dir: CardinalDir): Phaser.GameObjects.Image {
+    const layout = SPIKE_LAYOUT[dir];
+    const lethalRect = layout.spike;
+    // Native teeth are 137×36, sized to align with a 144 base. Scale
+    // to match the displayed base (TILE_SIZE / 144). The teeth strip
+    // sits at the lethal edge of the cell. Math note: a "frame edge"
+    // alignment would put offset = halfTile - teethH/2, but both the
+    // spike_0 base art and spike_1 teeth art have a few pixels of
+    // transparent padding inside their PNG frames. Aligning frame-to-
+    // frame leaves a visible gap between teeth tips and the base's
+    // visible edge — so push the teeth deeper into the cell by
+    // teethH / 2 so the bases overlap the visible base art.
+    const scale = TILE_SIZE / 144;
+    const teethW = 137 * scale;
+    const teethH = 36 * scale;
+    const halfTile = TILE_SIZE / 2;
+    const offset = halfTile - teethH;
+    const cellCx = (col + 0.5) * TILE_SIZE;
+    const cellCy = (row + 0.5) * TILE_SIZE;
+    let vx = cellCx;
+    let vy = cellCy;
+    switch (dir) {
+      case 'up':    vy -= offset; break;
+      case 'down':  vy += offset; break;
+      case 'left':  vx -= offset; break;
+      case 'right': vx += offset; break;
+    }
+    const visual = this.add.image(vx, vy, 'spike_1');
+    visual.setDisplaySize(teethW, teethH);
+    visual.setRotation(SPIKE_ROTATION[dir]);
+    this.directionalSpikes.add(visual);
+    // Arcade physics has no rotated bodies, so set the static body to
+    // the axis-aligned lethal half-cell directly. The visual's rotation
+    // doesn't affect this — the kill check uses player velocity + dir.
+    const bodyW = lethalRect.w * TILE_SIZE;
+    const bodyH = lethalRect.h * TILE_SIZE;
+    const bodyX = col * TILE_SIZE + lethalRect.x * TILE_SIZE;
+    const bodyY = row * TILE_SIZE + lethalRect.y * TILE_SIZE;
+    const body = visual.body as Phaser.Physics.Arcade.StaticBody;
+    body.setSize(bodyW, bodyH);
+    body.position.set(bodyX, bodyY);
     return visual;
   }
 
-  // Adds the rect to the timed-spike list IFF duration > 0. Static
-  // (always-extended) spikes are skipped — no toggle work needed each
-  // frame, matching the legacy zero-overhead behavior.
+  // Registers a toggle callback IFF duration > 0. Static (always-
+  // extended) spikes are skipped — no toggle work needed each frame,
+  // matching the legacy zero-overhead behavior.
   private maybeRegisterTimedSpike(
-    visual: Phaser.GameObjects.Rectangle,
+    onToggle: TimedSpikeToggle,
     duration: number | undefined,
     downtime: number | undefined,
   ): void {
@@ -695,7 +778,7 @@ export class PlayScene extends Phaser.Scene {
     if (dur <= 0) return;
     const down = downtime ?? 3.0;
     this.timedSpikes.push({
-      visual,
+      onToggle,
       duration: dur,
       downtime: down,
       firing: true,
@@ -713,7 +796,7 @@ export class PlayScene extends Phaser.Scene {
   // up-spike with a small gravity-induced v.y": |v.x| ≫ |v.y| means
   // the player isn't really moving INTO the tips, so we block instead
   // of killing. die() is idempotent so repeated triggers are harmless.
-  private processDirectionalSpike(spike: Phaser.GameObjects.Rectangle): boolean {
+  private processDirectionalSpike(spike: Phaser.GameObjects.Image): boolean {
     const dir = spike.getData('dir') as CardinalDir;
     const v = this.player.body.velocity;
     const ax = Math.abs(v.x);
@@ -742,8 +825,8 @@ export class PlayScene extends Phaser.Scene {
   private makeGlassWall(col: number, row: number, delay: number): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    const visual = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_GLASS);
-    visual.setAlpha(0.55);  // semi-transparent for the "glass" look
+    const visual = this.add.image(x, y, 'glass-wall');
+    visual.setDisplaySize(TILE_SIZE, TILE_SIZE);
     this.glassWalls.add(visual);
     visual.setData('delay', delay);
     visual.setData('triggered', false);
@@ -762,29 +845,46 @@ export class PlayScene extends Phaser.Scene {
     if (glass.getData('triggered')) {
       return;
     }
-    const group = this.findGlassGroup(glass as Phaser.GameObjects.Rectangle);
+    const group = this.findGlassGroup(glass as Phaser.GameObjects.Image);
     for (const member of group) {
       if (member.getData('triggered')) continue;
       member.setData('triggered', true);
       const delaySec = (member.getData('delay') as number) ?? 1.0;
-      this.time.delayedCall(delaySec * 1000, () => member.destroy());
+      // Fade alpha 1 → 0 over half the per-instance delay (visibly
+      // ~2× faster than the configured break time), then destroy.
+      // Body collision is disabled once the fade passes the halfway
+      // point (alpha < 0.5) so the player isn't blocked by a near-
+      // invisible wall — the first touch still rebounds (body is live
+      // at full alpha), but mid-fade the glass becomes pass-through.
+      this.tweens.add({
+        targets: member,
+        alpha: 0,
+        duration: delaySec * 500,
+        onUpdate: () => {
+          const body = member.body as Phaser.Physics.Arcade.StaticBody | null;
+          if (body && body.enable && member.alpha < 0.5) {
+            body.enable = false;
+          }
+        },
+        onComplete: () => member.destroy(),
+      });
     }
   }
 
   // BFS over 4-adjacent glass-wall cells starting from `start`. Cell key
-  // is `col,row` derived from each rect's center position (each wall is
+  // is `col,row` derived from each image's center position (each wall is
   // 1×1 tile, axis-aligned, so floor(x/TILE) gives the column).
   private findGlassGroup(
-    start: Phaser.GameObjects.Rectangle,
-  ): Phaser.GameObjects.Rectangle[] {
-    const cellMap = new Map<string, Phaser.GameObjects.Rectangle>();
+    start: Phaser.GameObjects.Image,
+  ): Phaser.GameObjects.Image[] {
+    const cellMap = new Map<string, Phaser.GameObjects.Image>();
     for (const obj of this.glassWalls.getChildren()) {
-      const gw = obj as Phaser.GameObjects.Rectangle;
+      const gw = obj as Phaser.GameObjects.Image;
       const col = Math.floor(gw.x / TILE_SIZE);
       const row = Math.floor(gw.y / TILE_SIZE);
       cellMap.set(`${col},${row}`, gw);
     }
-    const result: Phaser.GameObjects.Rectangle[] = [];
+    const result: Phaser.GameObjects.Image[] = [];
     const visited = new Set<string>();
     const queue: { col: number; row: number }[] = [
       { col: Math.floor(start.x / TILE_SIZE), row: Math.floor(start.y / TILE_SIZE) },
@@ -810,59 +910,100 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     for (const sb of page.spike_blocks) {
-      const spike = this.makeSpikeBlock(sb.x, sb.y);
-      this.maybeRegisterTimedSpike(spike, sb.duration, sb.downtime);
+      const built = this.makeSpikeBlock(sb.x, sb.y);
+      this.maybeRegisterTimedSpike(
+        (firing) => {
+          for (const t of built.teeth) t.setVisible(firing);
+          (built.hazard.body as Phaser.Physics.Arcade.StaticBody).enable = firing;
+        },
+        sb.duration,
+        sb.downtime,
+      );
     }
   }
 
-  // Spike block is two independent bodies:
-  //   spike — full-cell rect in `hazards` (overlap-kills, no collider).
-  //           When extended, the player walks in and dies on contact;
-  //           there's no physical block, just lethal contact.
-  //           Toggled by the timer (visible+enabled while extended).
-  //   plate — small central cube in `walls` (collider, no kill).
-  //           ALWAYS active. While the spike is extended, the player
-  //           dies before reaching the plate (and `die()` disables
-  //           body collision so the dying body passes through it).
-  //           While the spike is retracted, the plate is the only
-  //           obstacle in the cell — the small cube blocks the player.
-  // Always-on plate avoids the one-frame race that toggling caused
-  // (player flying past during the body re-enable propagation).
-  private makeSpikeBlock(col: number, row: number): Phaser.GameObjects.Rectangle {
-    const x = (col + 0.5) * TILE_SIZE;
-    const y = (row + 0.5) * TILE_SIZE;
+  // Spike block visual / collision layout:
+  //   base   — spike_2 image, full cell (decorative, no body).
+  //   teeth  — 4 × spike_3 images, one per side, tips pointing outward.
+  //            Toggled visible/hidden by the timed-spike system.
+  //   hazard — invisible full-cell static body in `hazards` (overlap
+  //            kills the player). Toggled enable in lockstep with teeth
+  //            so retracted = harmless.
+  //   plate  — invisible small central cube in `walls` (collider, no
+  //            kill). ALWAYS active. While the hazard is extended, the
+  //            player dies before reaching the plate; while retracted,
+  //            the plate is the only obstacle in the cell — see the
+  //            tunneling notes below.
+  // Plate width is intentionally 2/3 tile rather than 1/3. Phaser's
+  // ProcessX.Set (node_modules/phaser/src/physics/arcade/) picks
+  // separation direction by shortest-distance, NOT by velocity. When
+  // a fast-moving player overshoots more than halfway through a small
+  // static body in one frame, the shorter exit is forward — Phaser
+  // pushes the player out the far side, tunneling them through the
+  // cube. Math: to keep `body1OnLeft = false` for a player width 48
+  // moving 32 px/frame, plate width must be > 16. 2/3 tile = 32 px.
+  private makeSpikeBlock(col: number, row: number): {
+    hazard: Phaser.GameObjects.Rectangle;
+    teeth: Phaser.GameObjects.Image[];
+  } {
+    const cx = (col + 0.5) * TILE_SIZE;
+    const cy = (row + 0.5) * TILE_SIZE;
 
-    const spike = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_SPIKE);
-    this.hazards.add(spike);
-    const spikeBody = spike.body as Phaser.Physics.Arcade.StaticBody;
-    spikeBody.setSize(TILE_SIZE, TILE_SIZE);
-    spikeBody.updateFromGameObject();
+    // Base sprite — full cell, decorative.
+    this.add.image(cx, cy, 'spike_2').setDisplaySize(TILE_SIZE, TILE_SIZE);
 
-    // Plate width is intentionally 2/3 tile rather than 1/3. Phaser's
-    // ProcessX.Set (in node_modules/phaser/src/physics/arcade/) picks
-    // separation direction by shortest-distance, NOT by velocity. When
-    // a fast-moving player overshoots more than halfway through a
-    // small static body in one frame, the shorter exit is forward —
-    // Phaser pushes the player out the far side, "tunneling" them
-    // through the cube. Math: to keep `body1OnLeft = false` for a
-    // player width 48 moving 32 px/frame, plate width must be > 16.
-    // 2/3 tile = 32 px gives comfortable margin even with mild FPS dips.
-    const plateSize = TILE_SIZE * 2 / 3;
-    const plate = this.add.rectangle(x, y, plateSize, plateSize, COLOR_SPIKE_PLATE);
-    this.walls.add(plate);
-    const plateBody = plate.body as Phaser.Physics.Arcade.StaticBody;
-    plateBody.setSize(plateSize, plateSize);
-    plateBody.updateFromGameObject();
+    // Hazard body (invisible, full cell, in hazards group).
+    const hazard = this.makeInvisibleStaticBody(
+      col, row,
+      { x: 0, y: 0, w: 1, h: 1 },
+      this.hazards,
+    );
 
-    return spike;
+    // Plate body (invisible, central cube, in walls — always-on).
+    const plateRect: Rect = {
+      x: 1 / 6, y: 1 / 6, w: 2 / 3, h: 2 / 3,
+    };
+    this.makeInvisibleStaticBody(col, row, plateRect, this.walls);
+
+    // Teeth — 4 × spike_3, one per side. Native 83×30 scaled by
+    // TILE_SIZE/144 so they align to the spike_2 base's expected
+    // tooth slots. Same frame-padding compensation as the directional
+    // spike: push teeth deeper into the cell by teethH so the bases
+    // overlap the visible base art rather than the PNG frame edge.
+    const scale = TILE_SIZE / 144;
+    const teethW = 83 * scale;
+    const teethH = 30 * scale;
+    const halfTile = TILE_SIZE / 2;
+    const offset = halfTile - teethH;
+    const sides: Array<{ dx: number; dy: number; rot: number }> = [
+      { dx: 0, dy: -offset, rot: 0 },              // top, tips up
+      { dx: offset, dy: 0, rot: Math.PI / 2 },     // right, tips right
+      { dx: 0, dy: offset, rot: Math.PI },         // bottom, tips down
+      { dx: -offset, dy: 0, rot: -Math.PI / 2 },   // left, tips left
+    ];
+    const teeth: Phaser.GameObjects.Image[] = sides.map((s) =>
+      this.add
+        .image(cx + s.dx, cy + s.dy, 'spike_3')
+        .setDisplaySize(teethW, teethH)
+        .setRotation(s.rot),
+    );
+
+    return { hazard, teeth };
   }
 
   private buildConveyors(page: PageData): void {
     if (!page.conveyors) {
       return;
     }
+    // Adjacency map keyed by `col,row` → dir. conveyorPieceFor (shared
+    // with EditScene) reads it to decide left/middle/right per cell.
+    const cellMap = new Map<string, ConveyorDir>();
     for (const cv of page.conveyors) {
-      this.makeConveyor(cv.x, cv.y, cv.dir === 'cw' ? 1 : -1);
+      cellMap.set(`${cv.x},${cv.y}`, cv.dir);
+    }
+    for (const cv of page.conveyors) {
+      const piece = conveyorPieceFor(cellMap, cv.x, cv.y, cv.dir);
+      this.makeConveyor(cv.x, cv.y, cv.dir, piece);
     }
   }
 
@@ -870,25 +1011,31 @@ export class PlayScene extends Phaser.Scene {
   // and it blocks horizontal flight) with a `conveyorDir` data tag the
   // player's idle probe reads to apply horizontal push. Lives in the
   // walls group so the existing player↔walls collider handles it.
-  private makeConveyor(col: number, row: number, dir: 1 | -1): void {
+  // Visual is the appropriate (dir, piece) animated belt — direction
+  // is encoded in the art (arrows on the belt), so no overlay arrow.
+  private makeConveyor(
+    col: number,
+    row: number,
+    dir: 'cw' | 'ccw',
+    piece: 'left' | 'middle' | 'right',
+  ): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    const visual = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_CONVEYOR);
-    this.walls.add(visual);
-    visual.setData(CONVEYOR_DIR_DATA_KEY, dir);
-    const body = visual.body as Phaser.Physics.Arcade.StaticBody;
-    body.setSize(TILE_SIZE, TILE_SIZE);
-    body.updateFromGameObject();
-
-    // Direction arrow (visual only). Makes the push direction obvious
-    // at a glance.
-    this.add
-      .text(x, y, dir === 1 ? '→' : '←', {
-        color: '#ffffff',
-        fontSize: '24px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const numericDir = dir === 'cw' ? 1 : -1;
+    const sprite = this.add.sprite(x, y, `conveyor_${dir}_${piece}_0`);
+    sprite.setDisplaySize(TILE_SIZE, TILE_SIZE);
+    sprite.play(`conveyor_${dir}_${piece}`);
+    this.walls.add(sprite);
+    sprite.setData(CONVEYOR_DIR_DATA_KEY, numericDir);
+    // The conveyor art has the belt in the lower-middle of its 144
+    // frame: ~3/8 transparent padding above, ~1/2 tile of belt, small
+    // decorative bottom strip. Body covers just the belt strip so the
+    // player stands on the belt's visible top edge instead of floating
+    // at the cell-top. setSize(_, _, false) skips Phaser's auto-recenter
+    // so the explicit position.set below is authoritative.
+    const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+    body.setSize(TILE_SIZE, TILE_SIZE / 2, false);
+    body.position.set(col * TILE_SIZE, row * TILE_SIZE + TILE_SIZE * 3 / 8);
   }
 
   private buildCannons(page: PageData): void {
@@ -927,9 +1074,13 @@ export class PlayScene extends Phaser.Scene {
   private makeKey(col: number, row: number, colorIdx: number): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    const radius = TILE_SIZE * 0.25;
-    const palette = KEY_COLORS_LIGHT[colorIdx] ?? 0xffffff;
-    const visual = this.add.circle(x, y, radius, palette);
+    // Display larger than a tile: the key art has noticeable transparent
+    // padding inside its 144×144 frame, so the visible key reads at
+    // roughly player-size when the container is ~1.2 tile. No physics
+    // body — pickup is handled by checkKeyPickups() below.
+    const visual = this.add.sprite(x, y, `key_${colorIdx}_0`);
+    visual.setDisplaySize(TILE_SIZE * 1.1875, TILE_SIZE * 1.1875);
+    visual.play(`key_spin_${colorIdx}`);
     visual.setData('color', colorIdx);
     this.keys.add(visual);
   }
@@ -949,8 +1100,8 @@ export class PlayScene extends Phaser.Scene {
   private makeKeyWall(col: number, row: number, colorIdx: number): void {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
-    const palette = KEY_COLORS_DARK[colorIdx] ?? 0x444444;
-    const visual = this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, palette);
+    const visual = this.add.image(x, y, `key_wall_${colorIdx}`);
+    visual.setDisplaySize(TILE_SIZE, TILE_SIZE);
     visual.setData('color', colorIdx);
     this.keyWalls.add(visual);
     const body = visual.body as Phaser.Physics.Arcade.StaticBody;
@@ -964,7 +1115,7 @@ export class PlayScene extends Phaser.Scene {
     const t = this.keyPickupThreshold;
     const children = this.keys.getChildren();
     for (let i = children.length - 1; i >= 0; i--) {
-      const key = children[i] as Phaser.GameObjects.Arc;
+      const key = children[i] as Phaser.GameObjects.Sprite;
       if (Math.abs(key.x - px) < t && Math.abs(key.y - py) < t) {
         const colorIdx = key.getData('color') as number;
         key.destroy();
@@ -978,7 +1129,7 @@ export class PlayScene extends Phaser.Scene {
     const walls = this.keyWalls.getChildren();
     // Iterate backwards because destroy() removes from the group's list.
     for (let i = walls.length - 1; i >= 0; i--) {
-      const wall = walls[i] as Phaser.GameObjects.Rectangle;
+      const wall = walls[i] as Phaser.GameObjects.Image;
       if (wall.getData('color') === colorIdx) {
         wall.destroy();
       }
@@ -1141,17 +1292,13 @@ export class PlayScene extends Phaser.Scene {
     for (const tp of page.teleports) {
       const x = (tp.x + 0.5) * TILE_SIZE;
       const y = (tp.y + 0.5) * TILE_SIZE;
-      // No body — manual distance trigger in checkPageTriggers. The
-      // visual is a cell-sized orange rect with a "→N" label showing
-      // the destination page (1-indexed for human readability).
-      this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_TELEPORT);
-      this.add
-        .text(x, y, `→${tp.target_page + 1}`, {
-          color: '#000000',
-          fontSize: '20px',
-          fontStyle: 'bold',
-        })
-        .setOrigin(0.5);
+      // No body — manual distance trigger in checkPageTriggers. Visual
+      // is the 4-frame teleport animation. The destination page number
+      // is editor-only context; in Play it's just visual noise, so no
+      // overlay here.
+      const sprite = this.add.sprite(x, y, 'teleport_0');
+      sprite.setDisplaySize(TILE_SIZE, TILE_SIZE);
+      sprite.play('teleport_spin');
       this.teleports.push({ x, y, targetPage: tp.target_page });
     }
   }
@@ -1167,14 +1314,7 @@ export class PlayScene extends Phaser.Scene {
     }
     const x = (exit.x + 0.5) * TILE_SIZE;
     const y = (exit.y + 0.5) * TILE_SIZE;
-    this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_EXIT);
-    this.add
-      .text(x, y, 'EXIT', {
-        color: '#000000',
-        fontSize: '14px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    this.add.image(x, y, 'end-banner').setDisplaySize(TILE_SIZE, TILE_SIZE);
     this.exit = { x, y, targetPage: 0 };
   }
 
@@ -1387,15 +1527,138 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 
-  private ensureWallTexture(): void {
-    if (this.textures.exists('wall')) {
-      return;
+  // Animations live on the global AnimationManager (scene.anims is
+  // shared across scene restarts), so create them once and skip on
+  // subsequent restarts.
+  //
+  // Player:
+  //   player_roll_intro    — roll_0, roll_1                         (one-shot)
+  //   player_roll_loop     — roll_2..5                              (∞ loop)
+  //   player_ceiling_intro — player_idle, roll_0, roll_1            (one-shot)
+  //   player_land          — roll_0, player_idle                    (one-shot;
+  //                          last frame is the idle pose so the sprite
+  //                          naturally rests on idle when the anim ends)
+  // Pickups:
+  //   coin_spin            — coin_0, coin_1                         (∞ loop)
+  //   key_spin_<color>     — key_<color>_0..7  (one per color)      (∞ loop)
+  // Portals / teleport:
+  //   portal_spin_<color>  — portal_<color>_0..3  (one per color)   (∞ loop)
+  //   teleport_spin        — teleport_0..3                          (∞ loop)
+  // Conveyors:
+  //   conveyor_<dir>_<piece> — 2 frames per (cw|ccw) × (left|middle|right)
+  //
+  // Player.syncAnimation chains the two intros into the loop; land is
+  // standalone since it ends at idle.
+  private ensureAnimations(): void {
+    if (this.anims.exists('player_roll_loop')) return;
+
+    this.anims.create({
+      key: 'player_roll_intro',
+      frames: [
+        { key: 'player_roll_0' },
+        { key: 'player_roll_1' },
+      ],
+      frameRate: 12,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: 'player_roll_loop',
+      frames: [
+        { key: 'player_roll_2' },
+        { key: 'player_roll_3' },
+        { key: 'player_roll_4' },
+        { key: 'player_roll_5' },
+      ],
+      frameRate: 12,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'player_ceiling_intro',
+      frames: [
+        { key: 'player_idle' },
+        { key: 'player_roll_0' },
+        { key: 'player_roll_1' },
+      ],
+      frameRate: 12,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: 'player_land',
+      frames: [
+        { key: 'player_roll_0' },
+        { key: 'player_idle' },
+      ],
+      frameRate: 10,
+      repeat: 0,
+    });
+
+    // Coin: 2-frame flicker, slow enough to read as a beacon rather
+    // than visual noise.
+    this.anims.create({
+      key: 'coin_spin',
+      frames: [
+        { key: 'coin_0' },
+        { key: 'coin_1' },
+      ],
+      frameRate: 6,
+      repeat: -1,
+    });
+    // Keys: 8-frame rotation cycle, one animation per color so each
+    // key sprite plays its own palette.
+    for (let i = 0; i < 6; i++) {
+      this.anims.create({
+        key: `key_spin_${i}`,
+        frames: Array.from({ length: 8 }, (_, f) => ({ key: `key_${i}_${f}` })),
+        frameRate: 6,
+        repeat: -1,
+      });
     }
-    const gfx = this.add.graphics();
-    gfx.fillStyle(COLOR_WALL, 1);
-    gfx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-    gfx.generateTexture('wall', TILE_SIZE, TILE_SIZE);
-    gfx.destroy();
+    // Portals: 4-frame loop per color, one animation per pair color.
+    for (let c = 0; c < 6; c++) {
+      this.anims.create({
+        key: `portal_spin_${c}`,
+        frames: Array.from({ length: 4 }, (_, f) => ({ key: `portal_${c}_${f}` })),
+        frameRate: 8,
+        repeat: -1,
+      });
+    }
+    // Cross-page teleport: 4-frame loop, single color.
+    this.anims.create({
+      key: 'teleport_spin',
+      frames: Array.from({ length: 4 }, (_, f) => ({ key: `teleport_${f}` })),
+      frameRate: 8,
+      repeat: -1,
+    });
+    // Conveyor: one looping anim per (direction, piece) combination.
+    // All cells in a belt start playing simultaneously in
+    // buildConveyors → buildConveyors runs in create(), so adjacent
+    // pieces stay in sync visually.
+    for (const dir of ['cw', 'ccw'] as const) {
+      for (const piece of ['left', 'middle', 'right'] as const) {
+        this.anims.create({
+          key: `conveyor_${dir}_${piece}`,
+          frames: [
+            { key: `conveyor_${dir}_${piece}_0` },
+            { key: `conveyor_${dir}_${piece}_1` },
+          ],
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+    }
+  }
+
+  // Full-viewport background. Pinned to the camera (scrollFactor 0) so
+  // it stays fixed regardless of where the camera scrolls to center the
+  // current room. Sits beneath the grid lines (depth -200 < grid -100).
+  private drawBackground(): void {
+    const w = this.scale.gameSize.width;
+    const h = this.scale.gameSize.height;
+    this.add
+      .image(w / 2, h / 2, 'background')
+      .setDisplaySize(w, h)
+      .setScrollFactor(0)
+      .setDepth(-200);
   }
 
   private drawGridBackground(cols: number, rows: number): void {

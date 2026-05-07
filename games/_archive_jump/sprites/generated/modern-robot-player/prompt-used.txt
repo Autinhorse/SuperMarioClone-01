@@ -1,0 +1,7 @@
+﻿Asset plan: generate2dsprite hero_action_bundle
+Subject: modern small robot platformer protagonist, cartoon style, 3-heads-tall, height-to-width ratio about 2:1, teal/white panels, cyan eyes, orange accents.
+Actions: idle, walk, jump.
+Frames: 8 frames per action.
+Raw generation: separate 2x4 magenta-background sheets per action.
+Postprocess: generate2dsprite.py process, rows=2, cols=4, shared_scale, component_mode=largest, transparent PNG frames and per-action GIFs.
+Final atlas: 3 rows x 8 columns, row 1 idle, row 2 walk, row 3 jump, 128x128 cells, transparent PNG.

@@ -1,30 +1,6 @@
 import Phaser from 'phaser';
 
-import {
-  COLOR_CANNON,
-  COLOR_CANNON_BARREL,
-  COLOR_COIN,
-  COLOR_CONVEYOR,
-  COLOR_EXIT,
-  COLOR_GEAR,
-  COLOR_GEAR_HUB,
-  COLOR_GEAR_SPOKE,
-  COLOR_GLASS,
-  COLOR_GRID,
-  COLOR_LASER_BEAM,
-  COLOR_LASER_CANNON,
-  COLOR_LASER_CANNON_BARREL,
-  COLOR_LASER_HUB,
-  COLOR_PLAYER,
-  COLOR_SPIKE,
-  COLOR_SPIKE_PLATE,
-  COLOR_TELEPORT,
-  COLOR_TURRET_HUB,
-  COLOR_WALL,
-  KEY_COLORS_DARK,
-  KEY_COLORS_LIGHT,
-  TILE_SIZE,
-} from '../../config/feel';
+import { COLOR_GRID, COLOR_LASER_BEAM, TILE_SIZE } from '../../config/feel';
 import type {
   CardinalDir,
   ConveyorDir,
@@ -32,10 +8,19 @@ import type {
   TextLabel as TextLabelData,
 } from '../../../shared/level-format/types';
 
-// Shared layout fractions for spike + cannon-style sprites. These were
-// duplicated in EditScene + PlayScene; this module owns the editor
-// copy. The runtime also uses them (with its own physics anchoring)
-// so cross-file divergence is a known risk if either set is tweaked.
+// Editor previews. These mirror PlayScene's visuals using static frame-0
+// sprites — no animations (the editor wants a calm preview, not motion).
+// drawConveyor takes a piece (left/middle/right) the caller computes
+// via conveyorPieceFor in src/game/sprites.ts; everything else uses a
+// single sprite per call, optionally rotated for direction.
+//
+// Each draw function takes the per-page Container (so the registered
+// children get torn down on the next renderPage's removeAll) and reads
+// `container.scene` to access the scene factory.
+
+// Shared layout fractions. The runtime also uses these (with its own
+// physics anchoring) so cross-file divergence is a known risk if either
+// set is tweaked.
 type Rect = { x: number; y: number; w: number; h: number };
 const SPIKE_LAYOUT: Record<CardinalDir, { plate: Rect; spike: Rect }> = {
   up:    { plate: { x: 0,   y: 0.5, w: 1,   h: 0.5 }, spike: { x: 0,   y: 0,   w: 1,   h: 0.5 } },
@@ -43,11 +28,22 @@ const SPIKE_LAYOUT: Record<CardinalDir, { plate: Rect; spike: Rect }> = {
   left:  { plate: { x: 0.5, y: 0,   w: 0.5, h: 1   }, spike: { x: 0,   y: 0,   w: 0.5, h: 1   } },
   right: { plate: { x: 0,   y: 0,   w: 0.5, h: 1   }, spike: { x: 0.5, y: 0,   w: 0.5, h: 1   } },
 };
-const BARREL_RECTS: Record<CardinalDir, Rect> = {
-  up:    { x: 0.35, y: 0,    w: 0.30, h: 0.50 },
-  down:  { x: 0.35, y: 0.50, w: 0.30, h: 0.50 },
-  left:  { x: 0,    y: 0.35, w: 0.50, h: 0.30 },
-  right: { x: 0.50, y: 0.35, w: 0.50, h: 0.30 },
+// Image rotation per direction. Native art for spike_0 / cannon /
+// laser-cannon all point right at rotation 0; quarter-turns face other
+// cardinals.
+const DIR_ROTATION: Record<CardinalDir, number> = {
+  right: 0,
+  down: Math.PI / 2,
+  left: Math.PI,
+  up: -Math.PI / 2,
+};
+// Spike teeth specifically: native art has tips pointing UP, so rotate
+// to face the lethal direction (up=0, right=π/2, down=π, left=-π/2).
+const SPIKE_TIP_ROTATION: Record<CardinalDir, number> = {
+  up: 0,
+  right: Math.PI / 2,
+  down: Math.PI,
+  left: -Math.PI / 2,
 };
 
 // Pixel-coords of a cell's center.
@@ -55,17 +51,23 @@ export function cellCenter(col: number, row: number): { x: number; y: number } {
   return { x: (col + 0.5) * TILE_SIZE, y: (row + 0.5) * TILE_SIZE };
 }
 
-// Each draw function takes the per-page Container (so the registered
-// children get torn down on the next renderPage's removeAll) and
-// reads `container.scene` to access the scene factory. Pure functions
-// of (container, data) — no scene-instance state required.
-
 export function drawGridBackground(
   container: Phaser.GameObjects.Container,
   cols: number,
   rows: number,
 ): void {
   const scene = container.scene;
+  // Background image — same sprite as Play, sized to the editor's
+  // page area. Sits below the grid lines (depth -200 < grid -100).
+  const bg = scene.add.image(
+    (cols * TILE_SIZE) / 2,
+    (rows * TILE_SIZE) / 2,
+    'background',
+  );
+  bg.setDisplaySize(cols * TILE_SIZE, rows * TILE_SIZE);
+  bg.setDepth(-200);
+  container.add(bg);
+
   const g = scene.add.graphics();
   g.lineStyle(1, COLOR_GRID, 1);
   for (let c = 0; c <= cols; c++) {
@@ -84,7 +86,9 @@ export function drawWall(
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  container.add(container.scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_WALL));
+  const img = container.scene.add.image(x, y, 'wall');
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
 export function drawCoin(
@@ -93,9 +97,9 @@ export function drawCoin(
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  container.add(
-    container.scene.add.rectangle(x, y, TILE_SIZE * 0.55, TILE_SIZE * 0.55, COLOR_COIN),
-  );
+  const img = container.scene.add.image(x, y, 'coin_0');
+  img.setDisplaySize(TILE_SIZE * 0.825, TILE_SIZE * 0.825);
+  container.add(img);
 }
 
 export function drawGlassWall(
@@ -104,11 +108,14 @@ export function drawGlassWall(
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const r = container.scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_GLASS);
-  r.setAlpha(0.55);
-  container.add(r);
+  const img = container.scene.add.image(x, y, 'glass-wall');
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
+// Spike block: spike_2 base + 4 × spike_3 teeth, one per side. Same
+// art layout as PlayScene.makeSpikeBlock — see that function for the
+// offset / size derivation.
 export function drawSpikeBlock(
   container: Phaser.GameObjects.Container,
   col: number,
@@ -116,62 +123,84 @@ export function drawSpikeBlock(
 ): void {
   const { x, y } = cellCenter(col, row);
   const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_SPIKE));
-  container.add(
-    scene.add.rectangle(x, y, TILE_SIZE / 3, TILE_SIZE / 3, COLOR_SPIKE_PLATE),
-  );
+  const base = scene.add.image(x, y, 'spike_2');
+  base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(base);
+
+  const scale = TILE_SIZE / 144;
+  const teethW = 83 * scale;
+  const teethH = 30 * scale;
+  const halfTile = TILE_SIZE / 2;
+  const offset = halfTile - teethH;
+  const sides: Array<{ dx: number; dy: number; rot: number }> = [
+    { dx: 0, dy: -offset, rot: 0 },              // top
+    { dx: offset, dy: 0, rot: Math.PI / 2 },     // right
+    { dx: 0, dy: offset, rot: Math.PI },         // bottom
+    { dx: -offset, dy: 0, rot: -Math.PI / 2 },   // left
+  ];
+  for (const s of sides) {
+    const tooth = scene.add.image(x + s.dx, y + s.dy, 'spike_3');
+    tooth.setDisplaySize(teethW, teethH);
+    tooth.setRotation(s.rot);
+    container.add(tooth);
+  }
 }
 
+// Conveyor: the caller (EditScene.renderPage) computes the piece via
+// conveyorPieceFor(map, x, y, dir). No animation — frame 0 is enough
+// for an editor preview.
 export function drawConveyor(
   container: Phaser.GameObjects.Container,
   col: number,
   row: number,
   dir: ConveyorDir,
+  piece: 'left' | 'middle' | 'right',
 ): void {
   const { x, y } = cellCenter(col, row);
-  const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_CONVEYOR));
-  container.add(
-    scene.add
-      .text(x, y, dir === 'cw' ? '→' : '←', {
-        color: '#ffffff',
-        fontSize: '24px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5),
-  );
+  const img = container.scene.add.image(x, y, `conveyor_${dir}_${piece}_0`);
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
+// Directional spike: spike_0 full-cell base rotated by dir + spike_1
+// teeth on the lethal edge at native aspect (matches PlayScene.makeSpike).
 export function drawSpike(
   container: Phaser.GameObjects.Container,
   col: number,
   row: number,
   dir: CardinalDir,
 ): void {
-  const tlX = col * TILE_SIZE;
-  const tlY = row * TILE_SIZE;
-  const layout = SPIKE_LAYOUT[dir];
+  const { x, y } = cellCenter(col, row);
   const scene = container.scene;
-  container.add(
-    scene.add.rectangle(
-      tlX + (layout.plate.x + layout.plate.w / 2) * TILE_SIZE,
-      tlY + (layout.plate.y + layout.plate.h / 2) * TILE_SIZE,
-      layout.plate.w * TILE_SIZE,
-      layout.plate.h * TILE_SIZE,
-      COLOR_SPIKE_PLATE,
-    ),
-  );
-  container.add(
-    scene.add.rectangle(
-      tlX + (layout.spike.x + layout.spike.w / 2) * TILE_SIZE,
-      tlY + (layout.spike.y + layout.spike.h / 2) * TILE_SIZE,
-      layout.spike.w * TILE_SIZE,
-      layout.spike.h * TILE_SIZE,
-      COLOR_SPIKE,
-    ),
-  );
+  const base = scene.add.image(x, y, 'spike_0');
+  base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  base.setRotation(DIR_ROTATION[dir]);
+  container.add(base);
+
+  // Teeth strip on the lethal edge.
+  const lethalRect = SPIKE_LAYOUT[dir].spike;
+  const scale = TILE_SIZE / 144;
+  const teethW = 137 * scale;
+  const teethH = 36 * scale;
+  const halfTile = TILE_SIZE / 2;
+  const off = halfTile - teethH;
+  let tx = x;
+  let ty = y;
+  switch (dir) {
+    case 'up':    ty -= off; break;
+    case 'down':  ty += off; break;
+    case 'left':  tx -= off; break;
+    case 'right': tx += off; break;
+  }
+  const teeth = scene.add.image(tx, ty, 'spike_1');
+  teeth.setDisplaySize(teethW, teethH);
+  teeth.setRotation(SPIKE_TIP_ROTATION[dir]);
+  container.add(teeth);
+  void lethalRect;  // kept for documentation parity with PlayScene
 }
 
+// Cannon: full art (base + barrel) in a single 180×180 sprite,
+// displayed at 1.25 tile so the cell-portion lines up with the grid.
 export function drawCannon(
   container: Phaser.GameObjects.Container,
   col: number,
@@ -179,20 +208,10 @@ export function drawCannon(
   dir: CardinalDir,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_CANNON));
-  const tlX = col * TILE_SIZE;
-  const tlY = row * TILE_SIZE;
-  const r = BARREL_RECTS[dir];
-  container.add(
-    scene.add.rectangle(
-      tlX + (r.x + r.w / 2) * TILE_SIZE,
-      tlY + (r.y + r.h / 2) * TILE_SIZE,
-      r.w * TILE_SIZE,
-      r.h * TILE_SIZE,
-      COLOR_CANNON_BARREL,
-    ),
-  );
+  const img = container.scene.add.image(x, y, 'cannon');
+  img.setDisplaySize(TILE_SIZE * (180 / 144), TILE_SIZE * (180 / 144));
+  img.setRotation(DIR_ROTATION[dir]);
+  container.add(img);
 }
 
 export function drawKeyWall(
@@ -202,12 +221,9 @@ export function drawKeyWall(
   colorIdx: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  container.add(
-    container.scene.add.rectangle(
-      x, y, TILE_SIZE, TILE_SIZE,
-      KEY_COLORS_DARK[colorIdx] ?? 0x444444,
-    ),
-  );
+  const img = container.scene.add.image(x, y, `key_wall_${colorIdx}`);
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
 export function drawKey(
@@ -217,9 +233,10 @@ export function drawKey(
   colorIdx: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  container.add(
-    container.scene.add.circle(x, y, TILE_SIZE * 0.25, KEY_COLORS_LIGHT[colorIdx] ?? 0xffffff),
-  );
+  // Frame 0 only (editor preview); PlayScene plays the 8-frame anim.
+  const img = container.scene.add.image(x, y, `key_${colorIdx}_0`);
+  img.setDisplaySize(TILE_SIZE * 1.1875, TILE_SIZE * 1.1875);
+  container.add(img);
 }
 
 // `isEditing` true when this gear is the active path-edit target —
@@ -232,17 +249,14 @@ export function drawGear(
   const { x, y } = cellCenter(g.x, g.y);
   const r = (g.size * TILE_SIZE) / 2;
   const scene = container.scene;
-  container.add(scene.add.circle(x, y, r, COLOR_GEAR));
-  const spokes = scene.add.graphics();
-  spokes.lineStyle(3, COLOR_GEAR_SPOKE, 1);
-  spokes.lineBetween(x - r * 0.9, y, x + r * 0.9, y);
-  spokes.lineBetween(x, y - r * 0.9, x, y + r * 0.9);
-  container.add(spokes);
-  container.add(scene.add.circle(x, y, r * 0.22, COLOR_GEAR_HUB));
+  const textureKey = `gear_${Math.max(0, Math.min(2, g.size - 1))}`;
+  const img = scene.add.image(x, y, textureKey);
+  img.setDisplaySize(r * 2, r * 2);
+  container.add(img);
 
   if (g.waypoints.length > 0) {
     const path = scene.add.graphics();
-    path.lineStyle(2, COLOR_GEAR_HUB, 0.6);
+    path.lineStyle(2, 0xff9933, 0.6);
     path.beginPath();
     path.moveTo(x, y);
     for (const wp of g.waypoints) {
@@ -256,7 +270,7 @@ export function drawGear(
     container.add(path);
     for (const wp of g.waypoints) {
       const c = cellCenter(wp.x, wp.y);
-      container.add(scene.add.circle(c.x, c.y, TILE_SIZE * 0.1, COLOR_GEAR_HUB));
+      container.add(scene.add.circle(c.x, c.y, TILE_SIZE * 0.1, 0xff9933));
     }
   }
 
@@ -275,15 +289,13 @@ export function drawPortal(
   colorIdx: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const scene = container.scene;
-  container.add(
-    scene.add.circle(x, y, TILE_SIZE * 0.45, KEY_COLORS_DARK[colorIdx] ?? 0x444444),
-  );
-  container.add(
-    scene.add.circle(x, y, TILE_SIZE * 0.30, KEY_COLORS_LIGHT[colorIdx] ?? 0xffffff),
-  );
+  const img = container.scene.add.image(x, y, `portal_${colorIdx}_0`);
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
+// Turret: fixed base + barrel pointing right at rest (matches the
+// initial state Turret.barrel has before the first track update).
 export function drawTurret(
   container: Phaser.GameObjects.Container,
   col: number,
@@ -291,17 +303,12 @@ export function drawTurret(
 ): void {
   const { x, y } = cellCenter(col, row);
   const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_CANNON));
-  // Static "rest" pose — barrel pointing right at rotation 0, matching
-  // the initial state Turret.barrel has before the first track update.
-  container.add(
-    scene.add.rectangle(
-      x + TILE_SIZE * 0.30, y,
-      TILE_SIZE * 0.60, TILE_SIZE * 0.20,
-      COLOR_CANNON_BARREL,
-    ),
-  );
-  container.add(scene.add.circle(x, y, TILE_SIZE * 0.16, COLOR_TURRET_HUB));
+  const base = scene.add.image(x, y, 'turret-base');
+  base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(base);
+  const barrel = scene.add.image(x, y, 'turret-cannon');
+  barrel.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(barrel);
 }
 
 export function drawLaserCannon(
@@ -312,20 +319,14 @@ export function drawLaserCannon(
 ): void {
   const { x, y } = cellCenter(col, row);
   const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_LASER_CANNON));
-  const tlX = col * TILE_SIZE;
-  const tlY = row * TILE_SIZE;
-  const r = BARREL_RECTS[dir];
-  container.add(
-    scene.add.rectangle(
-      tlX + (r.x + r.w / 2) * TILE_SIZE,
-      tlY + (r.y + r.h / 2) * TILE_SIZE,
-      r.w * TILE_SIZE,
-      r.h * TILE_SIZE,
-      COLOR_LASER_CANNON_BARREL,
-    ),
-  );
-  container.add(scene.add.circle(x, y, TILE_SIZE * 0.16, COLOR_LASER_HUB));
+  const base = scene.add.image(x, y, 'laser-base');
+  base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(base);
+  const barrel = scene.add.image(x, y, 'laser-cannon');
+  barrel.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  barrel.setRotation(DIR_ROTATION[dir]);
+  container.add(barrel);
+
   // Beam-direction hint — short red line projecting one tile out from
   // the cannon edge in `dir`. Faint so it doesn't clutter the editor.
   const offsetMap: Record<CardinalDir, { dx: number; dy: number }> = {
@@ -375,6 +376,9 @@ export function drawTextLabel(
   }
 }
 
+// Cross-page teleport. Editor keeps the "→N" target-page label since
+// authors need to know where each teleporter goes; PlayScene drops it
+// (just visual noise during play).
 export function drawTeleport(
   container: Phaser.GameObjects.Container,
   col: number,
@@ -383,7 +387,9 @@ export function drawTeleport(
 ): void {
   const { x, y } = cellCenter(col, row);
   const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_TELEPORT));
+  const img = scene.add.image(x, y, 'teleport_0');
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
   container.add(
     scene.add
       .text(x, y, `→${targetPage + 1}`, {
@@ -395,46 +401,30 @@ export function drawTeleport(
   );
 }
 
+// Spawn (start banner). Editor-only — at runtime the spawn cell is
+// empty and the player visual sits there.
 export function drawSpawn(
   container: Phaser.GameObjects.Container,
   col: number,
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const scene = container.scene;
-  // Hollow blue square + 'S' so the spawn is unmistakable in the editor.
-  // (At runtime the spawn cell is empty — only the player visual sits there.)
-  const r = scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE);
-  r.setStrokeStyle(3, COLOR_PLAYER);
-  container.add(r);
-  container.add(
-    scene.add
-      .text(x, y, 'S', {
-        color: '#4ca6ff',
-        fontSize: '20px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5),
-  );
+  const img = container.scene.add.image(x, y, 'start-banner');
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
+// Exit (end banner). Same sprite PlayScene uses — for visual parity
+// with Play.
 export function drawExit(
   container: Phaser.GameObjects.Container,
   col: number,
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const scene = container.scene;
-  container.add(scene.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLOR_EXIT));
-  container.add(
-    scene.add
-      .text(x, y, 'X', {
-        color: '#ffffff',
-        fontSize: '20px',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5),
-  );
+  const img = container.scene.add.image(x, y, 'end-banner');
+  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
+  container.add(img);
 }
 
 // Bright orange outline. Single-cell elements pass `(x*TILE, y*TILE,

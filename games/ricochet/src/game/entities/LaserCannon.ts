@@ -2,9 +2,6 @@ import Phaser from 'phaser';
 
 import {
   COLOR_LASER_BEAM,
-  COLOR_LASER_CANNON,
-  COLOR_LASER_CANNON_BARREL,
-  COLOR_LASER_HUB,
   LASER_BEAM_THICKNESS_TILES,
   LASER_ROTATION_SPEED,
   TILE_SIZE,
@@ -44,7 +41,7 @@ export type BeamBlockerCheck = (col: number, row: number) => boolean;
 export class LaserCannon extends Phaser.GameObjects.Container {
   declare body: Phaser.Physics.Arcade.StaticBody;
 
-  private readonly barrel: Phaser.GameObjects.Container;
+  private readonly barrel: Phaser.GameObjects.Image;
   private readonly beam: Phaser.GameObjects.Graphics;
   private readonly rotateMode: LaserRotateMode;
   private readonly duration: number;
@@ -90,24 +87,18 @@ export class LaserCannon extends Phaser.GameObjects.Container {
     super(scene, x, y);
     scene.add.existing(this);
 
-    // Base — full cell, axis-aligned.
-    this.add(scene.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, COLOR_LASER_CANNON));
+    // Base — full cell, axis-aligned. Native art is the static lens
+    // mount that sits behind the rotating cannon piece.
+    const base = scene.add.image(0, 0, 'laser-base');
+    base.setDisplaySize(TILE_SIZE, TILE_SIZE);
+    this.add(base);
 
-    // Barrel sub-container. Rotation 0 = pointing right; we set the
-    // initial angle from `initialDir` below.
-    this.barrel = new Phaser.GameObjects.Container(scene, 0, 0);
-    this.add(this.barrel);
-    this.barrel.add(
-      scene.add.rectangle(
-        TILE_SIZE * 0.30,
-        0,
-        TILE_SIZE * 0.60,
-        TILE_SIZE * 0.20,
-        COLOR_LASER_CANNON_BARREL,
-      ),
-    );
-    this.barrel.add(scene.add.circle(0, 0, TILE_SIZE * 0.16, COLOR_LASER_HUB));
+    // Barrel — single rotating image (orb at image center, crystal tip
+    // poking out one side, drawn pointing right at rotation 0).
+    this.barrel = scene.add.image(0, 0, 'laser-cannon');
+    this.barrel.setDisplaySize(TILE_SIZE, TILE_SIZE);
     this.barrel.rotation = DIR_TO_RAD[initialDir];
+    this.add(this.barrel);
 
     // Beam — scene-level Graphics, drawn each tick in world coords.
     // Depth lifts it above the per-page render container so the beam

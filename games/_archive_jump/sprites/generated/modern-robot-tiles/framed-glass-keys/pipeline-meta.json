@@ -1,0 +1,258 @@
+{
+  "target": "asset",
+  "mode": "framed-glass-walls",
+  "prompt": "",
+  "role": "",
+  "input": "D:\\My_Works\\SuperMarioClone-01\\SuperMarioClone-01\\games\\_archive_jump\\sprites\\generated\\modern-robot-tiles\\framed-glass-keys\\raw-framed-glass-walls.png",
+  "threshold": 100,
+  "edge_threshold": 150,
+  "duration": 200,
+  "rows": 2,
+  "cols": 3,
+  "cell_size": 128,
+  "fit_scale": 0.94,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "center",
+  "shared_scale": true,
+  "component_mode": "largest",
+  "component_padding": 20,
+  "min_component_area": 1000,
+  "edge_touch_margin": 2,
+  "frame_labels": [
+    "framed-glass-wall-1",
+    "framed-glass-wall-2",
+    "framed-glass-wall-3",
+    "framed-glass-wall-4",
+    "framed-glass-wall-5",
+    "framed-glass-wall-6"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 127671,
+      "selected_component_bbox": [
+        130,
+        103,
+        496,
+        453
+      ],
+      "crop_bbox": [
+        110,
+        83,
+        504,
+        473
+      ],
+      "edge_touch": false,
+      "output_size": [
+        116,
+        115
+      ],
+      "paste_position": [
+        6,
+        6
+      ]
+    },
+    {
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        512,
+        0,
+        1024,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 127676,
+      "selected_component_bbox": [
+        66,
+        103,
+        432,
+        453
+      ],
+      "crop_bbox": [
+        46,
+        83,
+        452,
+        473
+      ],
+      "edge_touch": false,
+      "output_size": [
+        120,
+        115
+      ],
+      "paste_position": [
+        4,
+        6
+      ]
+    },
+    {
+      "grid": [
+        0,
+        2
+      ],
+      "source_box": [
+        1024,
+        0,
+        1536,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 127589,
+      "selected_component_bbox": [
+        2,
+        103,
+        368,
+        453
+      ],
+      "crop_bbox": [
+        0,
+        83,
+        388,
+        473
+      ],
+      "edge_touch": true,
+      "output_size": [
+        114,
+        115
+      ],
+      "paste_position": [
+        7,
+        6
+      ]
+    },
+    {
+      "grid": [
+        1,
+        0
+      ],
+      "source_box": [
+        0,
+        512,
+        512,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 126954,
+      "selected_component_bbox": [
+        130,
+        28,
+        496,
+        376
+      ],
+      "crop_bbox": [
+        110,
+        8,
+        504,
+        396
+      ],
+      "edge_touch": false,
+      "output_size": [
+        116,
+        114
+      ],
+      "paste_position": [
+        6,
+        7
+      ]
+    },
+    {
+      "grid": [
+        1,
+        1
+      ],
+      "source_box": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 126952,
+      "selected_component_bbox": [
+        66,
+        28,
+        432,
+        376
+      ],
+      "crop_bbox": [
+        46,
+        8,
+        452,
+        396
+      ],
+      "edge_touch": false,
+      "output_size": [
+        120,
+        114
+      ],
+      "paste_position": [
+        4,
+        7
+      ]
+    },
+    {
+      "grid": [
+        1,
+        2
+      ],
+      "source_box": [
+        1024,
+        512,
+        1536,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 114113,
+      "selected_component_bbox": [
+        2,
+        28,
+        368,
+        376
+      ],
+      "crop_bbox": [
+        0,
+        8,
+        388,
+        396
+      ],
+      "edge_touch": true,
+      "output_size": [
+        114,
+        114
+      ],
+      "paste_position": [
+        7,
+        7
+      ]
+    }
+  ],
+  "edge_touch_frames": [
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      2
+    ]
+  ]
+}

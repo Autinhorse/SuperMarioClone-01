@@ -13,7 +13,6 @@ import {
   DEATH_PAUSE_SEC,
   DEATH_POP_TILES,
   DEATH_SPIN_RAD_PER_SEC,
-  COLOR_PLAYER,
 } from '../config/feel';
 
 // GameObjects tagged with this data key carry a +1 (cw) or -1 (ccw)
@@ -57,11 +56,15 @@ const GRAVITY_STATES = new Set<PlayerState>([
   PlayerState.DEAD,           // gravity drives the freefall after the death pop
 ]);
 
-export class Player extends Phaser.GameObjects.Rectangle {
+export class Player extends Phaser.GameObjects.Sprite {
   // Narrow body type — set in constructor via physics.add.existing.
   declare body: Phaser.Physics.Arcade.Body;
 
   state: PlayerState = PlayerState.IDLE;
+  // Tracked for transition-driven animation playback. Updated at the
+  // end of each update() after the per-state handler may have changed
+  // `state`, so syncAnimation can compare from→to.
+  private prevState: PlayerState = PlayerState.IDLE;
 
   // Pixel-space tuning, cached from feel.ts at construction.
   private readonly flightSpeed: number;
@@ -104,7 +107,11 @@ export class Player extends Phaser.GameObjects.Rectangle {
     cursors: Phaser.Types.Input.Keyboard.CursorKeys,
     jumpKey: Phaser.Input.Keyboard.Key,
   ) {
-    super(scene, x, y, TILE_SIZE, TILE_SIZE, COLOR_PLAYER);
+    // Native sprite is 144×144; setDisplaySize scales it down to the
+    // 48px world grid. The body is added by physics.add.existing using
+    // the post-scale display size, then narrowed per-state by applyShape.
+    super(scene, x, y, 'player_idle');
+    this.setDisplaySize(TILE_SIZE, TILE_SIZE);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -148,6 +155,57 @@ export class Player extends Phaser.GameObjects.Rectangle {
       case PlayerState.FALLING:       this.falling(dt); break;
       case PlayerState.FALLING_INPUT: this.fallingInput(dt); break;
       case PlayerState.DEAD:          this.dead(dt); break;
+    }
+    this.syncAnimation();
+  }
+
+  // Drives sprite animation off state transitions. Run AFTER the per-
+  // state handler — handlers may have changed `state`, so the comparison
+  // here is "what did we transition into this frame?". Three meaningful
+  // transitions trigger animation changes; everything else lets the
+  // currently-playing animation continue (so a chained intro→loop or
+  // a cruising loop doesn't get reset by every wall touch / rebound /
+  // mid-air re-launch).
+  private syncAnimation(): void {
+    const from = this.prevState;
+    const to = this.state;
+    if (from === to) return;
+    this.prevState = to;
+
+    // Land: any motion → IDLE. Plays roll_0 briefly then snaps to idle.
+    // Skipped if the transition came from DEAD (respawn handles its own
+    // texture reset so we don't flash a roll frame at the spawn point).
+    if (to === PlayerState.IDLE && from !== PlayerState.DEAD) {
+      this.anims.play('player_land');
+      return;
+    }
+
+    // Ceiling bump: FLYING_UP / JUMPING → PAUSED is specifically the
+    // ceiling-collision branch (FLYING_UP/JUMPING set postPauseState =
+    // FALLING_INPUT after isOnCeiling). REBOUNDING → PAUSED hits this
+    // method too but is excluded here, leaving the roll loop running.
+    if (to === PlayerState.PAUSED &&
+        (from === PlayerState.FLYING_UP || from === PlayerState.JUMPING)) {
+      this.anims.play('player_ceiling_intro');
+      this.anims.chain('player_roll_loop');
+      return;
+    }
+
+    // Initial launch from floor: IDLE → any motion state. Plays the
+    // 2-frame intro that chains into the rolling loop.
+    if (from === PlayerState.IDLE) {
+      this.anims.play('player_roll_intro');
+      this.anims.chain('player_roll_loop');
+      return;
+    }
+
+    // Other motion-to-motion transitions (rebound, mid-air relaunch,
+    // pause-to-fall) leave the current animation running. If nothing
+    // is currently playing — e.g., we landed (idle) and immediately
+    // re-launched, interrupting the land anim — kick the loop so the
+    // sprite doesn't sit on a stale frame.
+    if (!this.anims.isPlaying) {
+      this.anims.play('player_roll_loop');
     }
   }
 
@@ -442,6 +500,12 @@ export class Player extends Phaser.GameObjects.Rectangle {
     this.postPauseState = PlayerState.FALLING;
     this.dyingTimer = 0;
     this.state = PlayerState.IDLE;
+    // Visual reset: stop whatever roll frame the death animation froze
+    // on, restore the idle texture, and seed prevState so syncAnimation
+    // sees no transition on the next update.
+    this.anims.stop();
+    this.setTexture('player_idle');
+    this.prevState = PlayerState.IDLE;
   }
 
   // ----- Helpers -----
@@ -499,8 +563,16 @@ export class Player extends Phaser.GameObjects.Rectangle {
   }
 
   private applyShape(shape: { w: number; h: number }): void {
+    // Body.setSize takes source-pixel dimensions (texture-frame coords);
+    // Phaser then computes body.width as sourceWidth × gameObject.scaleX.
+    // Our shapes are in target world pixels, so divide by scale to get
+    // the source size. Without this, scaling player_idle (144×144) down
+    // to TILE_SIZE shrinks the body proportionally — a 46×46 shape
+    // becomes a ~15×15 body and the player tunnels through walls.
+    const sourceW = shape.w / this.scaleX;
+    const sourceH = shape.h / this.scaleY;
     if (this.body.width !== shape.w || this.body.height !== shape.h) {
-      this.body.setSize(shape.w, shape.h, true);  // re-center on game object
+      this.body.setSize(sourceW, sourceH, true);  // re-center on game object
     }
   }
 

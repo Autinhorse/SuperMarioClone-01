@@ -1,0 +1,101 @@
+{
+  "target": "asset",
+  "mode": "laser-cannon",
+  "prompt": "",
+  "role": "",
+  "input": "D:\\My_Works\\SuperMarioClone-01\\SuperMarioClone-01\\games\\_archive_jump\\sprites\\generated\\modern-robot-tiles\\robot-style-refresh\\turrets-wall-mounted\\laser-360\\raw-laser-cannon-redesign-1x2.png",
+  "threshold": 100,
+  "edge_threshold": 150,
+  "duration": 120,
+  "rows": 1,
+  "cols": 2,
+  "cell_size": 128,
+  "fit_scale": 0.72,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "center",
+  "shared_scale": true,
+  "component_mode": "largest",
+  "component_padding": 6,
+  "min_component_area": 1000,
+  "edge_touch_margin": 2,
+  "frame_labels": [
+    "laser-cannon-redesign-1",
+    "laser-cannon-redesign-2"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        887,
+        887
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 120257,
+      "selected_component_bbox": [
+        176,
+        255,
+        716,
+        598
+      ],
+      "crop_bbox": [
+        170,
+        249,
+        722,
+        604
+      ],
+      "edge_touch": false,
+      "output_size": [
+        64,
+        41
+      ],
+      "paste_position": [
+        32,
+        43
+      ]
+    },
+    {
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        887,
+        0,
+        1774,
+        887
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 138946,
+      "selected_component_bbox": [
+        41,
+        256,
+        818,
+        598
+      ],
+      "crop_bbox": [
+        35,
+        250,
+        824,
+        604
+      ],
+      "edge_touch": false,
+      "output_size": [
+        92,
+        41
+      ],
+      "paste_position": [
+        18,
+        43
+      ]
+    }
+  ],
+  "edge_touch_frames": []
+}

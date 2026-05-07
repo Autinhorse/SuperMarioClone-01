@@ -6,6 +6,7 @@ import {
   TILE_SIZE,
 } from '../config/feel';
 import { validateLevel } from '../../shared/level-format/load';
+import { conveyorPieceFor, loadSprites } from '../sprites';
 import { saveLevelToHost } from '../../embed';
 import type {
   CardinalDir,
@@ -263,6 +264,10 @@ export class EditScene extends Phaser.Scene {
       }
       this.load.json(LEVEL_KEY, url);
     }
+
+    // All visual sprites (shared with PlayScene). EditScene shows
+    // static frames; the AnimationManager defs live in PlayScene only.
+    loadSprites(this);
   }
 
   create(): void {
@@ -338,7 +343,12 @@ export class EditScene extends Phaser.Scene {
 
     page.glass_walls?.forEach((g) => drawGlassWall(root, g.x, g.y));
     page.spike_blocks?.forEach((s) => drawSpikeBlock(root, s.x, s.y));
-    page.conveyors?.forEach((c) => drawConveyor(root, c.x, c.y, c.dir));
+    // Conveyor adjacency map for left/middle/right piece selection.
+    const conveyorMap = new Map<string, ConveyorDir>();
+    page.conveyors?.forEach((c) => conveyorMap.set(`${c.x},${c.y}`, c.dir));
+    page.conveyors?.forEach((c) =>
+      drawConveyor(root, c.x, c.y, c.dir, conveyorPieceFor(conveyorMap, c.x, c.y, c.dir)),
+    );
     page.spikes?.forEach((s) => drawSpike(root, s.x, s.y, s.dir));
     page.cannons?.forEach((c) => drawCannon(root, c.x, c.y, c.dir));
     page.key_walls?.forEach((k) => drawKeyWall(root, k.x, k.y, k.color));

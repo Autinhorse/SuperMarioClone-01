@@ -1,0 +1,249 @@
+{
+  "target": "asset",
+  "mode": "turrets",
+  "prompt": "",
+  "role": "",
+  "input": "D:\\My_Works\\SuperMarioClone-01\\SuperMarioClone-01\\games\\_archive_jump\\sprites\\generated\\modern-robot-tiles\\robot-style-refresh\\turrets\\raw-turrets-2x3.png",
+  "threshold": 100,
+  "edge_threshold": 150,
+  "duration": 120,
+  "rows": 2,
+  "cols": 3,
+  "cell_size": 128,
+  "fit_scale": 0.86,
+  "trim_border": 4,
+  "edge_clean_depth": 3,
+  "align": "center",
+  "shared_scale": true,
+  "component_mode": "largest",
+  "component_padding": 16,
+  "min_component_area": 1000,
+  "edge_touch_margin": 2,
+  "frame_labels": [
+    "turret-1",
+    "turret-2",
+    "turret-3",
+    "turret-4",
+    "turret-5",
+    "turret-6"
+  ],
+  "frames": [
+    {
+      "grid": [
+        0,
+        0
+      ],
+      "source_box": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 75130,
+      "selected_component_bbox": [
+        108,
+        144,
+        469,
+        447
+      ],
+      "crop_bbox": [
+        92,
+        128,
+        485,
+        463
+      ],
+      "edge_touch": false,
+      "output_size": [
+        92,
+        78
+      ],
+      "paste_position": [
+        18,
+        25
+      ]
+    },
+    {
+      "grid": [
+        0,
+        1
+      ],
+      "source_box": [
+        512,
+        0,
+        1024,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 75867,
+      "selected_component_bbox": [
+        60,
+        148,
+        477,
+        448
+      ],
+      "crop_bbox": [
+        44,
+        132,
+        493,
+        464
+      ],
+      "edge_touch": false,
+      "output_size": [
+        105,
+        78
+      ],
+      "paste_position": [
+        11,
+        25
+      ]
+    },
+    {
+      "grid": [
+        0,
+        2
+      ],
+      "source_box": [
+        1024,
+        0,
+        1536,
+        512
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 63946,
+      "selected_component_bbox": [
+        42,
+        220,
+        377,
+        449
+      ],
+      "crop_bbox": [
+        26,
+        204,
+        393,
+        465
+      ],
+      "edge_touch": false,
+      "output_size": [
+        86,
+        61
+      ],
+      "paste_position": [
+        21,
+        33
+      ]
+    },
+    {
+      "grid": [
+        1,
+        0
+      ],
+      "source_box": [
+        0,
+        512,
+        512,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 45733,
+      "selected_component_bbox": [
+        107,
+        87,
+        437,
+        304
+      ],
+      "crop_bbox": [
+        91,
+        71,
+        453,
+        320
+      ],
+      "edge_touch": false,
+      "output_size": [
+        85,
+        58
+      ],
+      "paste_position": [
+        21,
+        35
+      ]
+    },
+    {
+      "grid": [
+        1,
+        1
+      ],
+      "source_box": [
+        512,
+        512,
+        1024,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 63923,
+      "selected_component_bbox": [
+        44,
+        117,
+        379,
+        347
+      ],
+      "crop_bbox": [
+        28,
+        101,
+        395,
+        363
+      ],
+      "edge_touch": false,
+      "output_size": [
+        86,
+        61
+      ],
+      "paste_position": [
+        21,
+        33
+      ]
+    },
+    {
+      "grid": [
+        1,
+        2
+      ],
+      "source_box": [
+        1024,
+        512,
+        1536,
+        1024
+      ],
+      "component_mode": "largest",
+      "component_count": 1,
+      "selected_component_area": 44300,
+      "selected_component_bbox": [
+        25,
+        112,
+        460,
+        307
+      ],
+      "crop_bbox": [
+        9,
+        96,
+        476,
+        323
+      ],
+      "edge_touch": false,
+      "output_size": [
+        110,
+        53
+      ],
+      "paste_position": [
+        9,
+        37
+      ]
+    }
+  ],
+  "edge_touch_frames": []
+}

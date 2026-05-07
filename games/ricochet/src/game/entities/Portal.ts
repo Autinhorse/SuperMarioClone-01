@@ -1,16 +1,14 @@
 import Phaser from 'phaser';
 
 import {
-  KEY_COLORS_DARK,
-  KEY_COLORS_LIGHT,
   PORTAL_COOLDOWN_SEC,
   TILE_SIZE,
 } from '../config/feel';
 import type { Player } from './Player';
 
-// One half of a paired teleporter. Built as a Container holding an outer
-// dark ring + inner bright core (both in the pair's color) so the two
-// halves of a pair are visually obvious at a glance.
+// One half of a paired teleporter. Built as a Container holding a single
+// 4-frame animated sprite — one animation per pair color (defined in
+// PlayScene.ensureAnimations as `portal_spin_<colorIdx>`).
 //
 // On player overlap: teleport the player to `partner.position`, preserving
 // velocity (a fast-moving player exits going the same direction). Both
@@ -33,12 +31,11 @@ export class Portal extends Phaser.GameObjects.Container {
     super(scene, x, y);
     scene.add.existing(this);
 
-    const light = KEY_COLORS_LIGHT[colorIdx] ?? 0xffffff;
-    const dark = KEY_COLORS_DARK[colorIdx] ?? 0x444444;
-    // Outer ring (dark variant) + inner core (light variant) — reads as
-    // a portal "lens" rather than a flat tile.
-    this.add(scene.add.circle(0, 0, TILE_SIZE * 0.45, dark));
-    this.add(scene.add.circle(0, 0, TILE_SIZE * 0.30, light));
+    // Animated portal disc — 4-frame loop, color per `colorIdx`.
+    const sprite = scene.add.sprite(0, 0, `portal_${colorIdx}_0`);
+    sprite.setDisplaySize(TILE_SIZE, TILE_SIZE);
+    sprite.play(`portal_spin_${colorIdx}`);
+    this.add(sprite);
 
     // Static body — portal doesn't move. setCircle's offset is from the
     // body's top-left corner, so to center the circle on the container's
