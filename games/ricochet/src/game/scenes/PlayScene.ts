@@ -489,9 +489,13 @@ export class PlayScene extends Phaser.Scene {
     // Always show a back button during play. Editor-launched runs go
     // straight back to the editor (fast iterate); campaign / standalone
     // runs prompt with a Continue / Exit dialog so the player doesn't
-    // lose progress to a stray click. Embedded runs hide the in-game
-    // back button entirely — the host page owns navigation.
-    if (!this.embedLevelId) {
+    // lose progress to a stray click. Plain embedded runs hide the
+    // in-game back button — the host page owns navigation. The
+    // exception is an editor-launched test-play inside the iframe:
+    // there we DO want the in-iframe '◀ Edit' button so the user can
+    // return to the editor without leaving the page (the host's own
+    // back link would just navigate the iframe URL away from /edit).
+    if (!this.embedLevelId || this.launchedFromEditor) {
       this.buildBackButton();
     }
     // Tear down DOM additions on shutdown so they don't linger after a

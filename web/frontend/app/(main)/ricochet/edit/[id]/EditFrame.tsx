@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 const NS = "ricochet:";
 
 type IncomingMsg =
   | { type: "ricochet:ready"; levelId: string }
-  | { type: "ricochet:level-saved"; levelId: string; data: unknown };
+  | { type: "ricochet:level-saved"; levelId: string; data: unknown }
+  | { type: "ricochet:exit-edit"; levelId: string };
 
 // Hosts the embedded Phaser editor. Bridges its postMessage protocol
 // to the platform: pushes the current level data when asked, and on
@@ -24,6 +26,7 @@ export function EditFrame({
   levelData: unknown;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     function postSaveResult(ok: boolean, error?: string) {
@@ -44,6 +47,14 @@ export function EditFrame({
           { type: NS + "level", levelId, data: levelData },
           window.location.origin,
         );
+        return;
+      }
+
+      if (data.type === "ricochet:exit-edit") {
+        // Editor's "Done" button pressed (and any unsaved-changes
+        // confirm already resolved inside the iframe). Mirror the page
+        // header's back link — return to the level's play page.
+        router.push(`/ricochet/play/${encodeURIComponent(levelId)}`);
         return;
       }
 
@@ -74,7 +85,7 @@ export function EditFrame({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [levelId, levelData]);
+  }, [levelId, levelData, router]);
 
   return (
     <iframe

@@ -8,7 +8,7 @@ import {
 import { validateLevel } from '../../shared/level-format/load';
 import { conveyorPieceFor, loadSprites } from '../sprites';
 import { SOUND_KEYS, SOUND_VOLUMES, loadSounds } from '../sounds';
-import { saveLevelToHost } from '../../embed';
+import { postToParent, saveLevelToHost } from '../../embed';
 import type {
   CardinalDir,
   Cannon as CannonData,
@@ -540,6 +540,17 @@ export class EditScene extends Phaser.Scene {
     }, 900);
   }
 
+  // Exit the editor. Standalone mode jumps to the level-select menu;
+  // embedded mode posts a message so the host page can navigate (the
+  // editor lives inside an iframe and can't drive the parent's URL).
+  private leaveEditor(): void {
+    if (this.embedLevelId) {
+      postToParent('exit-edit', { levelId: this.embedLevelId });
+      return;
+    }
+    this.scene.start('MenuScene');
+  }
+
   // Fallback when no levelPath is known — kicks the JSON down through
   // a browser download so the user can still recover their edits.
   private downloadLevel(): void {
@@ -579,8 +590,8 @@ export class EditScene extends Phaser.Scene {
         <button data-action="add-page" class="palette-btn">+ Page</button>
         <button data-action="del-page" class="palette-btn">− Page</button>
       </div>
-      <div class="palette-actions"${this.embedLevelId ? ' style="grid-template-columns: 1fr"' : ''}>
-        ${this.embedLevelId ? '' : '<button data-action="menu" class="palette-btn">Menu</button>'}
+      <div class="palette-actions">
+        <button data-action="menu" class="palette-btn">${this.embedLevelId ? 'Done' : 'Menu'}</button>
         <button data-action="save" class="palette-btn">Save</button>
       </div>
       <button data-action="play" class="palette-btn palette-btn-primary palette-btn-full">▶ Play</button>
@@ -875,14 +886,14 @@ export class EditScene extends Phaser.Scene {
             // the user can fix whatever went wrong (network, etc.).
             async () => {
               const ok = await this.saveLevel();
-              if (ok) this.scene.start('MenuScene');
+              if (ok) this.leaveEditor();
             },
             // Discard & Leave: bail out without touching disk.
-            () => this.scene.start('MenuScene'),
+            () => this.leaveEditor(),
           );
           return;
         }
-        this.scene.start('MenuScene');
+        this.leaveEditor();
         return;
       case 'play':
         // Pass dirty through so it survives the Play → Edit round
