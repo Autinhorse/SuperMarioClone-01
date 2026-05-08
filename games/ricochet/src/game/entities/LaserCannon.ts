@@ -81,6 +81,7 @@ export class LaserCannon extends Phaser.GameObjects.Container {
     downtime: number,
     isBlocker: BeamBlockerCheck,
     gears: ReadonlyArray<Gear>,
+    delay = 0,
   ) {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
@@ -120,10 +121,18 @@ export class LaserCannon extends Phaser.GameObjects.Container {
     this.selfRow = row;
     this.gears = gears;
 
-    // Boot in the firing phase. duration === 0 means continuous; we use
-    // +Infinity so the timer never elapses.
-    this.firing = true;
-    this.phaseTimer = duration > 0 ? duration : Number.POSITIVE_INFINITY;
+    // delay > 0: spend the first `delay` seconds in the off phase, then
+    // transition into the normal cycle. Otherwise boot directly in the
+    // firing phase. duration === 0 with no delay means continuous fire
+    // (timer never elapses); duration === 0 with delay means "off for
+    // delay, then on forever".
+    if (delay > 0) {
+      this.firing = false;
+      this.phaseTimer = delay;
+    } else {
+      this.firing = true;
+      this.phaseTimer = duration > 0 ? duration : Number.POSITIVE_INFINITY;
+    }
   }
 
   tick(dt: number): void {
@@ -135,13 +144,19 @@ export class LaserCannon extends Phaser.GameObjects.Container {
       this.barrel.rotation -= LASER_ROTATION_SPEED * dt;
     }
 
-    // Advance the duty cycle, but only when duration > 0 — otherwise
-    // we stay firing forever (timer is +Infinity at construction).
-    if (this.duration > 0) {
+    // Advance the duty cycle. phaseTimer === +Infinity is the "stay
+    // here forever" sentinel (continuous fire after delay, or
+    // duration === 0 with no delay) — skip the decrement so we never
+    // toggle out of it.
+    if (Number.isFinite(this.phaseTimer)) {
       this.phaseTimer -= dt;
       if (this.phaseTimer <= 0) {
         this.firing = !this.firing;
-        this.phaseTimer = this.firing ? this.duration : this.downtime;
+        if (this.firing) {
+          this.phaseTimer = this.duration > 0 ? this.duration : Number.POSITIVE_INFINITY;
+        } else {
+          this.phaseTimer = this.downtime;
+        }
       }
     }
 

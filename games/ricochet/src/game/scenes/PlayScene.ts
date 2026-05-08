@@ -2,11 +2,17 @@ import Phaser from 'phaser';
 
 import {
   TILE_SIZE,
+  CAMPAIGN_LEVEL_COUNT,
   COLOR_BACKGROUND,
   COLOR_GRID,
   DEFAULT_LEVEL_URL,
   DEFAULT_PAGE_INDEX,
   FADE_DURATION_MS,
+  SHAKE_BASE_INTENSITY,
+  SHAKE_DURATION_MS,
+  SHAKE_MIN_CELLS,
+  SHAKE_SLOPE_PER_CELL_H,
+  SHAKE_SLOPE_PER_CELL_V,
 } from '../config/feel';
 import { Bullet } from '../entities/Bullet';
 import { Cannon } from '../entities/Cannon';
@@ -19,11 +25,20 @@ import { validateLevel } from '../../shared/level-format/load';
 import type { CardinalDir, ConveyorDir, LevelData, PageData } from '../../shared/level-format/types';
 import { postToParent } from '../../embed';
 import { conveyorPieceFor, loadSprites } from '../sprites';
+import { SOUND_KEYS, SOUND_VOLUMES, loadSounds } from '../sounds';
 
 // Cell-distance pickup struct used for teleport / exit triggers (manual
 // distance check, mirroring the no-body coin/key pattern). Half-tile
 // AABB threshold so the player only triggers when meaningfully overlapped.
 type Trigger = { x: number; y: number; targetPage: number };
+
+// Player wall-hit event payload. axis drives camera shake; surface picks
+// the SFX (wall / ceiling → HitWall; floor → LandGround).
+type WallHitInfo = {
+  axis: 'horizontal' | 'vertical';
+  surface: 'wall' | 'ceiling' | 'floor';
+  cells: number;
+};
 
 // Spike rect layout per direction. Each cell splits into:
 //   - A "plate" (wall — blocks the player, mounts the spikes)
@@ -250,10 +265,21 @@ export class PlayScene extends Phaser.Scene {
     // background); each render call sets displaySize so visuals match
     // the 48px world grid.
     loadSprites(this);
+    loadSounds(this);
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(COLOR_BACKGROUND);
+
+    // Background music. Lives on the global sound manager so it survives
+    // scene.restart (cross-page teleport, death respawn) without
+    // re-starting from the beginning. Other scenes (Menu, Edit) stop it
+    // explicitly in their own create — playback is scoped to gameplay.
+    const bgm = this.sound.get(SOUND_KEYS.bgm)
+      ?? this.sound.add(SOUND_KEYS.bgm, { loop: true, volume: SOUND_VOLUMES.bgm });
+    if (!bgm.isPlaying) {
+      bgm.play();
+    }
 
     const raw = (this.providedLevel ?? this.cache.json.get(LEVEL_KEY)) as unknown;
     this.loadedLevel = validateLevel(raw, DEFAULT_LEVEL_URL);
@@ -323,6 +349,19 @@ export class PlayScene extends Phaser.Scene {
     const spawnX = (page.spawn.x + 0.5) * TILE_SIZE;
     const spawnY = (page.spawn.y + 0.5) * TILE_SIZE;
     this.player = new Player(this, spawnX, spawnY, cursors, jumpKey);
+    // On death-respawn, restore the level's reset-on-death state
+    // (glass walls, keys, and the key walls keys had unlocked).
+    // Coins, gear progress, timed-spike phase, etc. are not reset —
+    // only the things the player consumed/broke this life.
+    this.player.on('respawn', () => this.resetLevelOnRespawn());
+    // Wall-hit camera shake + sound. Player emits cells flown, axis, and
+    // surface (wall / ceiling / floor) at every wall-terminating motion;
+    // the magnitude formula and threshold live in feel.ts so the feel
+    // can be tuned without touching scene code.
+    this.player.on('wall-hit', (info: WallHitInfo) => {
+      this.shakeOnWallHit(info);
+      this.playWallHitSound(info);
+    });
     // Turrets are built before the player; hand them the player ref now
     // so trackPlayer() can read its position each frame.
     for (const turret of this.turrets) {
@@ -409,22 +448,25 @@ export class PlayScene extends Phaser.Scene {
       )
       .setScrollFactor(0);
 
-    // Coin counter — top-right.
+    // Coin counter — top-left, the player-facing HUD slot.
     this.hudText = this.add
-      .text(this.scale.gameSize.width - 16, 16, '', {
+      .text(16, 16, '', {
         color: '#ffd933',
         fontSize: '20px',
         fontFamily: 'monospace',
       })
-      .setOrigin(1, 0)
       .setScrollFactor(0);
 
+    // Debug state (developer-facing) — pushed to the top-right so it
+    // stays available without crowding the coin HUD.
     this.debugText = this.add
-      .text(16, 16, '', {
+      .text(this.scale.gameSize.width - 16, 16, '', {
         color: '#cccccc',
         fontSize: '14px',
         fontFamily: 'monospace',
+        align: 'right',
       })
+      .setOrigin(1, 0)
       .setScrollFactor(0);
 
     // Fade overlay (full design viewport, scroll-locked, on top of
@@ -481,6 +523,7 @@ export class PlayScene extends Phaser.Scene {
     document.body.appendChild(wrap);
     this.backButton = wrap;
     wrap.querySelector('button')?.addEventListener('click', () => {
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
       if (this.launchedFromEditor) {
         // Direct back — keeps the test → tweak → test loop fast.
         this.scene.start('EditScene', {
@@ -530,6 +573,8 @@ export class PlayScene extends Phaser.Scene {
     dialog.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement;
       const action = t.getAttribute('data-modal-action');
+      if (!action) return;
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
       if (action === 'continue') {
         dialog.remove();
         this.scene.resume();
@@ -576,11 +621,22 @@ export class PlayScene extends Phaser.Scene {
     // bookkeeping. While the spike is extended, the player dies on
     // contact and `die()` clears checkCollision, so the dying body
     // passes the plate harmlessly.
+    //
+    // phaseTimer === Infinity is used as the "no further toggles"
+    // sentinel — happens when a spike with duration === 0 is in its
+    // permanently-extended phase after a one-shot delay.
     for (const ts of this.timedSpikes) {
+      if (!Number.isFinite(ts.phaseTimer)) continue;
       ts.phaseTimer -= dt;
       if (ts.phaseTimer <= 0) {
         ts.firing = !ts.firing;
-        ts.phaseTimer = ts.firing ? ts.duration : ts.downtime;
+        if (ts.firing) {
+          // Entering the extended phase — duration 0 means "stay
+          // extended forever" (reachable only via the delay path).
+          ts.phaseTimer = ts.duration > 0 ? ts.duration : Number.POSITIVE_INFINITY;
+        } else {
+          ts.phaseTimer = ts.downtime;
+        }
         ts.onToggle(ts.firing);
       }
     }
@@ -643,6 +699,7 @@ export class PlayScene extends Phaser.Scene {
       if (Math.abs(coin.x - px) < t && Math.abs(coin.y - py) < t) {
         coin.destroy();
         this.coinCount += 1;
+        this.sound.play(SOUND_KEYS.getCoin, { volume: SOUND_VOLUMES.sfx });
       }
     }
   }
@@ -673,6 +730,7 @@ export class PlayScene extends Phaser.Scene {
         },
         spike.duration,
         spike.downtime,
+        spike.delay,
       );
     }
   }
@@ -766,24 +824,43 @@ export class PlayScene extends Phaser.Scene {
     return visual;
   }
 
-  // Registers a toggle callback IFF duration > 0. Static (always-
-  // extended) spikes are skipped — no toggle work needed each frame,
-  // matching the legacy zero-overhead behavior.
+  // Registers a toggle callback when the spike has any timing behavior.
+  // Skipped only when duration === 0 AND delay === 0 — that's the
+  // legacy "always extended" case with no per-frame work to do.
+  // With delay > 0 we register even when duration === 0, so a static
+  // hazard can be staggered into existence after a delay.
   private maybeRegisterTimedSpike(
     onToggle: TimedSpikeToggle,
     duration: number | undefined,
     downtime: number | undefined,
+    delay: number | undefined,
   ): void {
     const dur = duration ?? 0;
-    if (dur <= 0) return;
+    const dly = delay ?? 0;
+    if (dur <= 0 && dly <= 0) return;
     const down = downtime ?? 3.0;
-    this.timedSpikes.push({
-      onToggle,
-      duration: dur,
-      downtime: down,
-      firing: true,
-      phaseTimer: dur,
-    });
+    if (dly > 0) {
+      // Spikes are constructed in the extended state (teeth visible,
+      // hazard body enabled). Retract immediately so the level matches
+      // what the delay specifies — the first frame the spike must look
+      // and act retracted.
+      onToggle(false);
+      this.timedSpikes.push({
+        onToggle,
+        duration: dur,
+        downtime: down,
+        firing: false,
+        phaseTimer: dly,
+      });
+    } else {
+      this.timedSpikes.push({
+        onToggle,
+        duration: dur,
+        downtime: down,
+        firing: true,
+        phaseTimer: dur,
+      });
+    }
   }
 
   // ProcessCallback for the player vs directional-spikes collider.
@@ -811,6 +888,52 @@ export class PlayScene extends Phaser.Scene {
       return false;  // skip separation; death-pop carries the body away
     }
     return true;     // separate (block like a wall)
+  }
+
+  // Death-respawn hook: rebuilds the page elements that the player
+  // consumed/broke this life so the next attempt starts from a clean
+  // slate. `clear(true, true)` removes from group, removes from scene,
+  // and destroys each child — Phaser's tween manager auto-drops any
+  // pending tween (e.g. mid-fade glass walls) targeting destroyed
+  // Camera shake driven by the player's wall-hit event. cells < min
+  // means a light bump and is silent. Above min, magnitude grows
+  // linearly per axis (vertical drops scale faster than horizontal
+  // flights, see feel.ts). Intensity is locked to the impact axis via
+  // a Vector2 so a hard floor landing only shakes vertically. force=true
+  // re-arms the shake if a previous one is still running — back-to-back
+  // wall hits should both register.
+  private shakeOnWallHit(info: WallHitInfo): void {
+    if (info.cells < SHAKE_MIN_CELLS) return;
+    const slope = info.axis === 'horizontal' ? SHAKE_SLOPE_PER_CELL_H : SHAKE_SLOPE_PER_CELL_V;
+    const magnitude = 1.0 + (info.cells - SHAKE_MIN_CELLS) * slope;
+    const intensity = SHAKE_BASE_INTENSITY * magnitude;
+    const vec = info.axis === 'horizontal'
+      ? new Phaser.Math.Vector2(intensity, 0)
+      : new Phaser.Math.Vector2(0, intensity);
+    this.cameras.main.shake(SHAKE_DURATION_MS, vec, true);
+  }
+
+  // Pick the right SFX for a wall hit: a downward-terminating motion
+  // is a landing (LandGround), anything else (side wall, ceiling bump)
+  // is a generic impact (HitWall). Plays unconditionally — the visual
+  // shake has its own min-cells threshold, but a tiny "tap" still
+  // sounds about right for arcade feel.
+  private playWallHitSound(info: WallHitInfo): void {
+    const key = info.surface === 'floor' ? SOUND_KEYS.landGround : SOUND_KEYS.hitWall;
+    this.sound.play(key, { volume: SOUND_VOLUMES.sfx });
+  }
+
+  // objects. We then re-run the same build helpers used in create(),
+  // pulling fresh state from the level data.
+  private resetLevelOnRespawn(): void {
+    const page = this.loadedLevel.pages[this.currentPageIndex];
+    if (!page) return;
+    this.glassWalls.clear(true, true);
+    this.keys.clear(true, true);
+    this.keyWalls.clear(true, true);
+    this.buildGlassWalls(page);
+    this.buildKeyWalls(page);
+    this.buildKeys(page);
   }
 
   private buildGlassWalls(page: PageData): void {
@@ -845,11 +968,12 @@ export class PlayScene extends Phaser.Scene {
     if (glass.getData('triggered')) {
       return;
     }
+    this.sound.play(SOUND_KEYS.hitGlass, { volume: SOUND_VOLUMES.sfx });
     const group = this.findGlassGroup(glass as Phaser.GameObjects.Image);
     for (const member of group) {
       if (member.getData('triggered')) continue;
       member.setData('triggered', true);
-      const delaySec = (member.getData('delay') as number) ?? 1.0;
+      const delaySec = (member.getData('delay') as number) ?? 1.5;
       // Fade alpha 1 → 0 over half the per-instance delay (visibly
       // ~2× faster than the configured break time), then destroy.
       // Body collision is disabled once the fade passes the halfway
@@ -918,6 +1042,7 @@ export class PlayScene extends Phaser.Scene {
         },
         sb.duration,
         sb.downtime,
+        sb.delay,
       );
     }
   }
@@ -1051,6 +1176,7 @@ export class PlayScene extends Phaser.Scene {
         c.period,
         c.bullet_speed,
         this.bullets,
+        c.delay ?? 0,
       );
       // Add to the walls group so the existing player↔walls collider
       // physically blocks the player against the cannon's cell.
@@ -1120,6 +1246,7 @@ export class PlayScene extends Phaser.Scene {
         const colorIdx = key.getData('color') as number;
         key.destroy();
         this.removeKeyWallsByColor(colorIdx);
+        this.sound.play(SOUND_KEYS.getKey, { volume: SOUND_VOLUMES.sfx });
       }
     }
   }
@@ -1148,6 +1275,7 @@ export class PlayScene extends Phaser.Scene {
         t.period,
         t.bullet_speed,
         this.bullets,
+        t.delay ?? 0,
       );
       // Add to walls group so the player + bullets collide with the
       // turret's cell exactly like with a cannon.
@@ -1206,6 +1334,7 @@ export class PlayScene extends Phaser.Scene {
         lc.downtime,
         this.isLaserBlocker,
         this.gears,
+        lc.delay ?? 0,
       );
       this.walls.add(laser);
       this.laserCannons.push(laser);
@@ -1314,7 +1443,19 @@ export class PlayScene extends Phaser.Scene {
     }
     const x = (exit.x + 0.5) * TILE_SIZE;
     const y = (exit.y + 0.5) * TILE_SIZE;
-    this.add.image(x, y, 'end-banner').setDisplaySize(TILE_SIZE, TILE_SIZE);
+    // Visual: same animated teleport ring as cross-page teleports, scaled
+    // 1.5× so the exit reads as the "destination" of the level. Trigger
+    // threshold (checkPageTriggers) is intentionally still TILE_SIZE — the
+    // collision box doesn't grow with the visual.
+    const visualSize = TILE_SIZE * 1.5;
+    const ring = this.add.sprite(x, y, 'teleport_0');
+    ring.setDisplaySize(visualSize, visualSize);
+    ring.play('teleport_spin');
+    this.add.text(x, y, 'EXIT', {
+      color: '#ffd700',
+      fontSize: '14px',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
     this.exit = { x, y, targetPage: 0 };
   }
 
@@ -1323,9 +1464,10 @@ export class PlayScene extends Phaser.Scene {
   // a single touch can't queue multiple page jumps.
   //
   // Two thresholds, intentionally different:
-  //   - Teleports: half-tile (player CENTER must be inside the cell).
-  //     Teleports are mid-air navigation; near-miss triggers would
-  //     teleport the player against their intent.
+  //   - Teleports: 0.6 tile (slightly past half-cell — player CENTER
+  //     just inside the cell counts, with a 20% leeway around the
+  //     half-tile baseline so a near-miss flight that visually grazes
+  //     the portal still triggers).
   //   - Exit: full-tile (player BODY must overlap the cell). The player
   //     is deliberately seeking the exit, so a 24-px dead zone on each
   //     side of the cell — where the player visually overlaps but the
@@ -1336,7 +1478,7 @@ export class PlayScene extends Phaser.Scene {
     }
     const px = this.player.x;
     const py = this.player.y;
-    const teleportT = TILE_SIZE * 0.5;
+    const teleportT = TILE_SIZE * 0.6;
     for (const tp of this.teleports) {
       if (Math.abs(tp.x - px) < teleportT && Math.abs(tp.y - py) < teleportT) {
         this.transitionToPage(tp.targetPage);
@@ -1356,6 +1498,7 @@ export class PlayScene extends Phaser.Scene {
   private handleExit(): void {
     if (this.transitioning) return;
     this.transitioning = true;
+    this.sound.play(SOUND_KEYS.levelCompleted, { volume: SOUND_VOLUMES.sfx });
     this.tweens.add({
       targets: this.fadeOverlay,
       alpha: 1,
@@ -1403,6 +1546,7 @@ export class PlayScene extends Phaser.Scene {
     dialog.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement;
       if (t.getAttribute('data-modal-action') === 'replay') {
+        this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
         dialog.remove();
         this.scene.restart({
           pageIndex: 0,
@@ -1415,12 +1559,12 @@ export class PlayScene extends Phaser.Scene {
 
   // Campaign-mode level-complete dialog. Two paths: continue to the
   // next numbered level, or return to MenuScene. The last campaign
-  // level (>= 12) drops the Next button and shows a "game complete"
-  // headline instead — the only action is back-to-menu.
+  // level drops the Next button and shows a "game complete" headline
+  // instead — the only action is back-to-menu.
   private showCampaignComplete(): void {
-    const isLast = this.campaignLevel >= 12;
+    const isLast = this.campaignLevel >= CAMPAIGN_LEVEL_COUNT;
     const headline = isLast
-      ? `All ${this.campaignLevel} levels cleared!`
+      ? `Congratulations! You cleared all ${CAMPAIGN_LEVEL_COUNT} levels.`
       : `Level ${this.campaignLevel} complete!`;
     const nextBtn = isLast
       ? ''
@@ -1441,6 +1585,8 @@ export class PlayScene extends Phaser.Scene {
     dialog.addEventListener('click', (ev) => {
       const t = ev.target as HTMLElement;
       const action = t.getAttribute('data-modal-action');
+      if (!action) return;
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
       if (action === 'menu') {
         dialog.remove();
         this.scene.start('MenuScene');
@@ -1501,6 +1647,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.transitioning = true;
+    this.sound.play(SOUND_KEYS.teleport, { volume: SOUND_VOLUMES.sfx });
     this.tweens.add({
       targets: this.fadeOverlay,
       alpha: 1,
@@ -1545,7 +1692,7 @@ export class PlayScene extends Phaser.Scene {
   //   portal_spin_<color>  — portal_<color>_0..3  (one per color)   (∞ loop)
   //   teleport_spin        — teleport_0..3                          (∞ loop)
   // Conveyors:
-  //   conveyor_<dir>_<piece> — 2 frames per (cw|ccw) × (left|middle|right)
+  //   conveyor_<dir>_<piece> — 3 frames per (cw|ccw) × (left|middle|right)
   //
   // Player.syncAnimation chains the two intros into the loop; land is
   // standalone since it ends at idle.
@@ -1640,6 +1787,7 @@ export class PlayScene extends Phaser.Scene {
           frames: [
             { key: `conveyor_${dir}_${piece}_0` },
             { key: `conveyor_${dir}_${piece}_1` },
+            { key: `conveyor_${dir}_${piece}_2` },
           ],
           frameRate: 8,
           repeat: -1,

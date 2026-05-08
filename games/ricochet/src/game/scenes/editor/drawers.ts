@@ -174,7 +174,9 @@ export function drawSpike(
   const scene = container.scene;
   const base = scene.add.image(x, y, 'spike_0');
   base.setDisplaySize(TILE_SIZE, TILE_SIZE);
-  base.setRotation(DIR_ROTATION[dir]);
+  // spike_0 native art points UP (open side faces up), not right — so use
+  // SPIKE_TIP_ROTATION, not DIR_ROTATION. Matches PlayScene's makeSpike.
+  base.setRotation(SPIKE_TIP_ROTATION[dir]);
   container.add(base);
 
   // Teeth strip on the lethal edge.
@@ -414,17 +416,29 @@ export function drawSpawn(
   container.add(img);
 }
 
-// Exit (end banner). Same sprite PlayScene uses — for visual parity
-// with Play.
+// Exit. Same teleport ring PlayScene uses (static frame 0 — editor wants
+// a calm preview, no animation), scaled 1.5× with a gold "EXIT" label so
+// it reads as the level destination.
 export function drawExit(
   container: Phaser.GameObjects.Container,
   col: number,
   row: number,
 ): void {
   const { x, y } = cellCenter(col, row);
-  const img = container.scene.add.image(x, y, 'end-banner');
-  img.setDisplaySize(TILE_SIZE, TILE_SIZE);
-  container.add(img);
+  const scene = container.scene;
+  const visualSize = TILE_SIZE * 1.5;
+  const ring = scene.add.image(x, y, 'teleport_0');
+  ring.setDisplaySize(visualSize, visualSize);
+  container.add(ring);
+  container.add(
+    scene.add
+      .text(x, y, 'EXIT', {
+        color: '#ffd700',
+        fontSize: '14px',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5),
+  );
 }
 
 // Bright orange outline. Single-cell elements pass `(x*TILE, y*TILE,

@@ -60,6 +60,11 @@ export interface Spike extends Cell {
    *  of 0 means "always extended" (legacy + the placement default). */
   duration?: number;
   downtime?: number;
+  /** Stagger offset: spawn retracted for `delay` seconds before the
+   *  first extend. 0 / missing = no delay (legacy behavior). Combined
+   *  with duration === 0, the spike is "permanently extended starting
+   *  at delay" — useful for staggering an otherwise static hazard. */
+  delay?: number;
 }
 
 export interface GlassWall extends Cell {
@@ -70,6 +75,9 @@ export interface Cannon extends Cell {
   dir: CardinalDir;
   period: number;
   bullet_speed: number;
+  /** Stagger offset: silent for `delay` seconds before the first shot
+   *  (so first shot lands at delay + period). Missing = 0. */
+  delay?: number;
 }
 
 export interface Conveyor extends Cell {
@@ -81,6 +89,8 @@ export interface Conveyor extends Cell {
 export interface SpikeBlock extends Cell {
   duration?: number;
   downtime?: number;
+  /** Stagger offset — see Spike.delay. */
+  delay?: number;
 }
 
 export interface Key extends Cell {
@@ -111,6 +121,8 @@ export interface Portal {
 export interface Turret extends Cell {
   period: number;
   bullet_speed: number;
+  /** Stagger offset — see Cannon.delay. */
+  delay?: number;
 }
 
 export type LaserRotateMode = 'none' | 'cw' | 'ccw';
@@ -124,6 +136,10 @@ export interface LaserCannon extends Cell {
   duration: number;
   /** Beam-off duration in seconds. Ignored when duration === 0. */
   downtime: number;
+  /** Stagger offset: beam stays off for `delay` seconds before the
+   *  first on-phase. 0 / missing = no delay. With duration === 0 and
+   *  delay > 0, the beam is "off for delay seconds, then on forever". */
+  delay?: number;
 }
 
 // Decorative multi-cell text overlay. (x, y) is the top-left cell;

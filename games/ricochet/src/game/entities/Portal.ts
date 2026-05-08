@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 
 import {
   PORTAL_COOLDOWN_SEC,
+  PORTAL_DESTINATION_COOLDOWN_SEC,
   TILE_SIZE,
 } from '../config/feel';
+import { SOUND_KEYS, SOUND_VOLUMES } from '../sounds';
 import type { Player } from './Player';
 
 // One half of a paired teleporter. Built as a Container holding a single
@@ -12,8 +14,10 @@ import type { Player } from './Player';
 //
 // On player overlap: teleport the player to `partner.position`, preserving
 // velocity (a fast-moving player exits going the same direction). Both
-// portals enter a brief cooldown (body.enable = false) afterward, so the
-// player materializing inside the partner doesn't immediately re-teleport.
+// portals enter a cooldown afterward (body.enable = false). The source
+// gets a short cooldown so the exit physics frame doesn't re-trigger;
+// the destination gets a longer one so a rebound off a nearby wall can't
+// bring the player back into its overlap circle and re-teleport.
 //
 // Orphan portals (pair with only 1 point) have partner = null and are
 // non-functional — they exist visually but never teleport. This matches
@@ -51,6 +55,7 @@ export class Portal extends Phaser.GameObjects.Container {
     if (this.cooldownTimer > 0 || this.partner === null) {
       return;
     }
+    this.scene.sound.play(SOUND_KEYS.portal, { volume: SOUND_VOLUMES.sfx });
     // Preserve velocity so a fast-moving player carries momentum through
     // the portal — body.reset zeros it, so we capture and restore.
     const vx = player.body.velocity.x;
@@ -58,10 +63,9 @@ export class Portal extends Phaser.GameObjects.Container {
     player.body.reset(this.partner.x, this.partner.y);
     player.body.setVelocity(vx, vy);
 
-    // Both portals get the cooldown so the partner doesn't immediately
-    // re-trigger as the player appears inside it.
-    this.armCooldown();
-    this.partner.armCooldown();
+    // Source: short window. Destination: longer (see feel.ts comment).
+    this.armCooldown(PORTAL_COOLDOWN_SEC);
+    this.partner.armCooldown(PORTAL_DESTINATION_COOLDOWN_SEC);
   }
 
   // Per-frame: count down cooldown and re-enable when it expires.
@@ -74,8 +78,8 @@ export class Portal extends Phaser.GameObjects.Container {
     }
   }
 
-  private armCooldown(): void {
-    this.cooldownTimer = PORTAL_COOLDOWN_SEC;
+  private armCooldown(durationSec: number): void {
+    this.cooldownTimer = durationSec;
     this.body.enable = false;
   }
 }

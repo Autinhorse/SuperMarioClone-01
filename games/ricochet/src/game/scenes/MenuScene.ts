@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 
-import { COLOR_BACKGROUND } from '../config/feel';
-
-const LEVEL_COUNT = 12;
+import { CAMPAIGN_LEVEL_COUNT, COLOR_BACKGROUND } from '../config/feel';
+import { SOUND_KEYS, SOUND_VOLUMES, loadSounds } from '../sounds';
 
 // Landing screen. Shows a 4×3 grid of "Level 1..12" buttons; clicking
 // one starts EditScene with that level's path. Also handles the
@@ -16,8 +15,22 @@ export class MenuScene extends Phaser.Scene {
     super('MenuScene');
   }
 
+  preload(): void {
+    // All scenes call loadSounds — Phaser dedupes by key, so the first
+    // scene to land downloads the audio and subsequent scenes are no-ops
+    // against the cache. We load here so the menu's UI_Button click is
+    // ready immediately rather than waiting for PlayScene preload.
+    loadSounds(this);
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor(COLOR_BACKGROUND);
+
+    // Stop the gameplay BGM if we're returning to the menu after a
+    // PlayScene session. The sound persists across scenes (it lives on
+    // the global sound manager); MenuScene isn't a music scene, so we
+    // explicitly silence it here. No-op when there's no active BGM.
+    this.sound.get(SOUND_KEYS.bgm)?.stop();
 
     // Deep-link via URL (?level=NN). One-shot — if the parameter is
     // present we never show the menu, we just hand off to EditScene.
@@ -38,7 +51,7 @@ export class MenuScene extends Phaser.Scene {
   private buildOverlay(): void {
     const overlay = document.createElement('div');
     overlay.className = 'menu-overlay';
-    const buttons = Array.from({ length: LEVEL_COUNT }, (_, i) => {
+    const buttons = Array.from({ length: CAMPAIGN_LEVEL_COUNT }, (_, i) => {
       const n = i + 1;
       const padded = String(n).padStart(2, '0');
       return `<button data-level="${padded}" class="menu-btn">Level ${n}</button>`;
@@ -60,6 +73,7 @@ export class MenuScene extends Phaser.Scene {
     const target = ev.target as HTMLElement;
     const action = target.getAttribute('data-action');
     if (action === 'play-campaign') {
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
       // Boot campaign mode at Level 1 — PlayScene reads `campaignLevel`
       // and threads it through cross-page transitions / Next-Level.
       this.scene.start('PlayScene', { campaignLevel: 1 });
@@ -67,6 +81,7 @@ export class MenuScene extends Phaser.Scene {
     }
     const lvl = target.getAttribute('data-level');
     if (!lvl) return;
+    this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
     this.scene.start('EditScene', { levelPath: `levels/level-${lvl}.json` });
   }
 

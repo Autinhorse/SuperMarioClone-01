@@ -105,25 +105,40 @@ export function elementParamHtml(
   ctx: { pageCount: number; isEditingGearPath: boolean },
 ): string {
   switch (sel.kind) {
+    // Walls / coins / start / exit have no per-instance params — the
+    // panel just shows the kind so the user can confirm the click
+    // landed on the right thing.
+    case 'wall':
+      return elemHeader('Wall');
+    case 'coin':
+      return elemHeader('Coin');
+    case 'spawn':
+      return elemHeader('Start');
+    case 'exit':
+      return elemHeader('Exit');
     case 'glass_wall':
       return elemHeader('Glass Wall')
         + elemStepperHtml('Delay', sel.ref.delay.toFixed(1) + ' s', 'delay');
     case 'spike_block': {
       const dur = sel.ref.duration ?? 0;
       const down = sel.ref.downtime ?? 3.0;
+      const dly = sel.ref.delay ?? 0;
       const durLabel = dur === 0 ? 'always extended' : `${dur.toFixed(1)} s`;
       return elemHeader('Spike Block')
         + elemStepperHtml('Extend', durLabel, 'duration')
-        + elemStepperHtml('Retract', `${down.toFixed(1)} s`, 'downtime');
+        + elemStepperHtml('Retract', `${down.toFixed(1)} s`, 'downtime')
+        + elemStepperHtml('Delay', `${dly.toFixed(1)} s`, 'delay');
     }
     case 'spike': {
       const dur = sel.ref.duration ?? 0;
       const down = sel.ref.downtime ?? 3.0;
+      const dly = sel.ref.delay ?? 0;
       const durLabel = dur === 0 ? 'always extended' : `${dur.toFixed(1)} s`;
       return elemHeader('Spike')
         + elemDirHtml(sel.ref.dir)
         + elemStepperHtml('Extend', durLabel, 'duration')
-        + elemStepperHtml('Retract', `${down.toFixed(1)} s`, 'downtime');
+        + elemStepperHtml('Retract', `${down.toFixed(1)} s`, 'downtime')
+        + elemStepperHtml('Delay', `${dly.toFixed(1)} s`, 'delay');
     }
     case 'conveyor':
       return elemHeader('Conveyor')
@@ -132,11 +147,13 @@ export function elementParamHtml(
       return elemHeader('Cannon')
         + elemDirHtml(sel.ref.dir)
         + elemStepperHtml('Period', sel.ref.period.toFixed(1) + ' s', 'period')
-        + elemStepperHtml('Bullet speed', sel.ref.bullet_speed.toFixed(1) + ' t/s', 'bullet_speed');
+        + elemStepperHtml('Bullet speed', sel.ref.bullet_speed.toFixed(1) + ' t/s', 'bullet_speed')
+        + elemStepperHtml('Delay', `${(sel.ref.delay ?? 0).toFixed(1)} s`, 'delay');
     case 'turret':
       return elemHeader('Turret')
         + elemStepperHtml('Period', sel.ref.period.toFixed(1) + ' s', 'period')
-        + elemStepperHtml('Bullet speed', sel.ref.bullet_speed.toFixed(1) + ' t/s', 'bullet_speed');
+        + elemStepperHtml('Bullet speed', sel.ref.bullet_speed.toFixed(1) + ' t/s', 'bullet_speed')
+        + elemStepperHtml('Delay', `${(sel.ref.delay ?? 0).toFixed(1)} s`, 'delay');
     case 'gear': {
       const closedLabel = sel.ref.closed ? 'Closed loop' : 'Open path';
       const pathBlock = ctx.isEditingGearPath
@@ -174,7 +191,8 @@ export function elementParamHtml(
         + elemDirHtml(lc.dir)
         + elemLaserRotateHtml(lc.rotate)
         + elemStepperHtml('Duration', durLabel, 'duration')
-        + elemStepperHtml('Downtime', lc.downtime.toFixed(1) + ' s', 'downtime');
+        + elemStepperHtml('Downtime', lc.downtime.toFixed(1) + ' s', 'downtime')
+        + elemStepperHtml('Delay', `${(lc.delay ?? 0).toFixed(1)} s`, 'delay');
     }
     case 'text_label': {
       // The textarea uses an `input` event listener on the palette
@@ -307,8 +325,7 @@ export function textToolParamHtml(p: { width: number; height: number }): string 
       <button data-param-text-h="1" class="palette-btn palette-stepper-btn">+</button>
     </div>
     <div class="palette-hint">
-      Place a label, then switch to <b>Select / Move</b> and click it
-      to edit its text content.
+      Place a label, then click it to edit its text content.
     </div>
   `;
 }

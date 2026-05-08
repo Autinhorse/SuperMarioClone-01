@@ -35,6 +35,7 @@ export class Turret extends Phaser.GameObjects.Container {
     period: number,
     bulletSpeedTiles: number,
     bulletGroup: Phaser.GameObjects.Group,
+    delay = 0,
   ) {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
@@ -66,7 +67,7 @@ export class Turret extends Phaser.GameObjects.Container {
     this.period = period;
     this.bulletSpeedPx = bulletSpeedTiles * TILE_SIZE;
     this.bulletGroup = bulletGroup;
-    this.timer = period;  // first shot delayed by period
+    this.timer = period + delay;  // first shot at delay+period
   }
 
   // PlayScene calls this once after the player is constructed, since

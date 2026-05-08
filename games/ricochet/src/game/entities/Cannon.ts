@@ -7,7 +7,9 @@ import { Bullet } from './Bullet';
 // Fixed cannon: a wall-like static body (player can't pass through it)
 // that fires a Bullet every `period` seconds in `dir`. First shot is
 // delayed by `period` (NOT 0) so the player has a moment to read the
-// room before the first shot — matches the Godot reference.
+// room before the first shot — matches the Godot reference. An optional
+// `delay` extends that initial silence (first shot lands at delay+period)
+// so a level author can stagger several cannons on the same period.
 
 type DirVector = { x: number; y: number };
 const DIR_VECTORS: Record<CardinalDir, DirVector> = {
@@ -49,6 +51,7 @@ export class Cannon extends Phaser.GameObjects.Image {
     period: number,
     bulletSpeedTiles: number,
     bulletGroup: Phaser.GameObjects.Group,
+    delay = 0,
   ) {
     const x = (col + 0.5) * TILE_SIZE;
     const y = (row + 0.5) * TILE_SIZE;
@@ -68,7 +71,7 @@ export class Cannon extends Phaser.GameObjects.Image {
     this.period = period;
     this.bulletSpeedPx = bulletSpeedTiles * TILE_SIZE;
     this.bulletGroup = bulletGroup;
-    this.timer = period;  // first shot delayed by period
+    this.timer = period + delay;  // first shot at delay+period
   }
 
   // Called by PlayScene each frame.

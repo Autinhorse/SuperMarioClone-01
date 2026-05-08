@@ -2,36 +2,769 @@
   "id": "level-07",
   "name": "Level 7",
   "exit": {
-    "page": 0,
-    "x": 28,
-    "y": 16
+    "page": 1,
+    "x": 10,
+    "y": 2
   },
   "pages": [
     {
       "tiles": [
         "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+        "W..........W.................W",
+        "W........C.W..CCC......CCCCC.W",
+        "W..........W....C..........C.W",
+        "WWWWWWWW.C.WWWW.C.W..WWWWW.C.W",
+        "W......W...W....C.W........C.W",
+        "W......W.C.W.C....W........C.W",
+        "W.C....W.....C.WWWW........C.W",
+        "W......W.C...C.........C...C.W",
+        "W.C.WWWW.....CCC.......C...C.W",
+        "W........C.W.C.C.......C...C.W",
+        "W.C.C.C.C..W.CCC...........C.W",
+        "W..........W...............C.W",
+        "W...WWWWWWWW.......WWWWWWW.C.W",
+        "W..........................C.W",
+        "W..CCCCC.......CCCCCCCCCCCCC.W",
         "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
-        "W............................W",
+        "W.........WWWWWWWWWWWWWWWWWWWW"
+      ],
+      "spawn": {
+        "x": 6,
+        "y": 2
+      },
+      "portals": [
+        {
+          "color": 1,
+          "points": [
+            {
+              "x": 2,
+              "y": 2
+            },
+            {
+              "x": 12,
+              "y": 1
+            }
+          ]
+        }
+      ],
+      "key_walls": [
+        {
+          "x": 4,
+          "y": 1,
+          "color": 5
+        },
+        {
+          "x": 4,
+          "y": 2,
+          "color": 5
+        },
+        {
+          "x": 4,
+          "y": 3,
+          "color": 5
+        },
+        {
+          "x": 1,
+          "y": 13,
+          "color": 2
+        },
+        {
+          "x": 2,
+          "y": 13,
+          "color": 2
+        },
+        {
+          "x": 3,
+          "y": 13,
+          "color": 2
+        },
+        {
+          "x": 18,
+          "y": 1,
+          "color": 3
+        },
+        {
+          "x": 18,
+          "y": 2,
+          "color": 3
+        },
+        {
+          "x": 18,
+          "y": 3,
+          "color": 3
+        },
+        {
+          "x": 21,
+          "y": 1,
+          "color": 0
+        },
+        {
+          "x": 21,
+          "y": 2,
+          "color": 0
+        },
+        {
+          "x": 21,
+          "y": 3,
+          "color": 0
+        }
+      ],
+      "keys": [
+        {
+          "x": 9,
+          "y": 15,
+          "color": 5
+        },
+        {
+          "x": 5,
+          "y": 7,
+          "color": 2
+        },
+        {
+          "x": 16,
+          "y": 9,
+          "color": 3
+        },
+        {
+          "x": 23,
+          "y": 6,
+          "color": 0
+        }
+      ],
+      "spikes": [
+        {
+          "x": 11,
+          "y": 14,
+          "dir": "left",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 15,
+          "dir": "left",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 16,
+          "dir": "left",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 1,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 2,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 3,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 4,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 5,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 6,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 7,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 8,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 9,
+          "y": 17,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 7,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 8,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 9,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 12,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 13,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 14,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 15,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 16,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 17,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 18,
+          "y": 13,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        }
+      ],
+      "glass_walls": [
+        {
+          "x": 10,
+          "y": 14,
+          "delay": 1.5
+        },
+        {
+          "x": 10,
+          "y": 15,
+          "delay": 1.5
+        },
+        {
+          "x": 10,
+          "y": 16,
+          "delay": 1.5
+        },
+        {
+          "x": 17,
+          "y": 8,
+          "delay": 1.5
+        },
+        {
+          "x": 17,
+          "y": 9,
+          "delay": 1.5
+        },
+        {
+          "x": 17,
+          "y": 10,
+          "delay": 1.5
+        },
+        {
+          "x": 17,
+          "y": 11,
+          "delay": 1.5
+        },
+        {
+          "x": 17,
+          "y": 12,
+          "delay": 1.5
+        }
+      ],
+      "spike_blocks": [
+        {
+          "x": 18,
+          "y": 8,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 18,
+          "y": 9,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 18,
+          "y": 10,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 18,
+          "y": 11,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 18,
+          "y": 12,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 5,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 6,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 7,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 8,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 9,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 10,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 11,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 25,
+          "y": 12,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 21,
+          "y": 7,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 21,
+          "y": 10,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 21,
+          "y": 9,
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 21,
+          "y": 8,
+          "duration": 0,
+          "downtime": 3
+        }
+      ],
+      "teleports": [
+        {
+          "x": 13,
+          "y": 15,
+          "target_page": 1
+        }
+      ],
+      "conveyors": [
+        {
+          "x": 19,
+          "y": 12,
+          "dir": "cw"
+        },
+        {
+          "x": 20,
+          "y": 12,
+          "dir": "cw"
+        },
+        {
+          "x": 21,
+          "y": 12,
+          "dir": "cw"
+        },
+        {
+          "x": 22,
+          "y": 12,
+          "dir": "cw"
+        },
+        {
+          "x": 23,
+          "y": 12,
+          "dir": "cw"
+        },
+        {
+          "x": 24,
+          "y": 12,
+          "dir": "cw"
+        }
+      ]
+    },
+    {
+      "tiles": [
+        "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+        "W...........W.......W........W",
+        "W.CCCCC.....W.CCCCC.W...CCCC.W",
+        "W.C.........W.C...C.W......C.W",
+        "..C.WWWWWWWWW.C.W...WWWWWW.C.W",
+        "..C.........W.C.W...W......C.W",
+        "..CCCCC...C.W.C.W...W.CCCCCC.W",
+        "..C...C...C.W.C.W...W........W",
+        "W.C.W.C.W.C.W.C.....W.C.WWWWWW",
+        "W.C.W.C.W.C.W.C.....W.C......W",
+        "W.C.W...W.C.W.C.....W.CCCCCC.W",
+        "W.C.W...W.C.W.C.....W.CCCCCC.W",
+        "W.C.W...W.C.W.C.WWWWW........W",
+        "W.C.......C...C.....WWWWWW.C.W",
+        "W.CCCCCCCCC...C............C.W",
+        "W.............CCCCCCCCCCCCCC.W",
         "W............................W",
         "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
       ],
       "spawn": {
-        "x": 1,
-        "y": 16
-      }
+        "x": 22,
+        "y": 2
+      },
+      "gears": [
+        {
+          "x": 28,
+          "y": 7,
+          "size": 1,
+          "speed": 4,
+          "spin": 8,
+          "waypoints": [
+            {
+              "x": 22,
+              "y": 7
+            }
+          ],
+          "closed": false
+        },
+        {
+          "x": 21,
+          "y": 12,
+          "size": 1,
+          "speed": 4,
+          "spin": 8,
+          "waypoints": [
+            {
+              "x": 28,
+              "y": 12
+            }
+          ],
+          "closed": false
+        },
+        {
+          "x": 19,
+          "y": 13,
+          "size": 1,
+          "speed": 6,
+          "spin": 6,
+          "waypoints": [
+            {
+              "x": 13,
+              "y": 13
+            }
+          ],
+          "closed": false
+        },
+        {
+          "x": 19,
+          "y": 11,
+          "size": 1,
+          "speed": 8,
+          "spin": 4,
+          "waypoints": [
+            {
+              "x": 13,
+              "y": 5
+            }
+          ],
+          "closed": false
+        }
+      ],
+      "key_walls": [
+        {
+          "x": 12,
+          "y": 16,
+          "color": 2
+        },
+        {
+          "x": 12,
+          "y": 15,
+          "color": 2
+        },
+        {
+          "x": 12,
+          "y": 14,
+          "color": 2
+        },
+        {
+          "x": 12,
+          "y": 13,
+          "color": 2
+        },
+        {
+          "x": 8,
+          "y": 1,
+          "color": 0
+        },
+        {
+          "x": 8,
+          "y": 2,
+          "color": 0
+        },
+        {
+          "x": 8,
+          "y": 3,
+          "color": 0
+        }
+      ],
+      "glass_walls": [
+        {
+          "x": 17,
+          "y": 7,
+          "delay": 1.5
+        },
+        {
+          "x": 18,
+          "y": 7,
+          "delay": 1.5
+        },
+        {
+          "x": 19,
+          "y": 7,
+          "delay": 1.5
+        },
+        {
+          "x": 8,
+          "y": 5,
+          "delay": 1.5
+        },
+        {
+          "x": 8,
+          "y": 6,
+          "delay": 1.5
+        },
+        {
+          "x": 8,
+          "y": 7,
+          "delay": 1.5
+        }
+      ],
+      "keys": [
+        {
+          "x": 18,
+          "y": 5,
+          "color": 2
+        },
+        {
+          "x": 6,
+          "y": 10,
+          "color": 0
+        }
+      ],
+      "spikes": [
+        {
+          "x": 1,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 2,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 3,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 4,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 5,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 6,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 7,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 8,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 9,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 10,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 11,
+          "y": 16,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 5,
+          "y": 12,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 6,
+          "y": 12,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 7,
+          "y": 12,
+          "dir": "up",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 0,
+          "y": 4,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 0,
+          "y": 5,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 0,
+          "y": 6,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        },
+        {
+          "x": 0,
+          "y": 7,
+          "dir": "right",
+          "duration": 0,
+          "downtime": 3
+        }
+      ]
     }
   ]
 }

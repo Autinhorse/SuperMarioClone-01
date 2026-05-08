@@ -15,6 +15,12 @@ export const TILE_SIZE = 48;
 export const DEFAULT_LEVEL_URL = 'levels/test.json';
 export const DEFAULT_PAGE_INDEX = 0;
 
+// Number of campaign levels shipped today. Drives both the level-select
+// grid in MenuScene and the "is this the last level?" check in
+// PlayScene's campaign-complete dialog. Bump this when adding new
+// `level-NN.json` files (and also place the JSON under public/levels).
+export const CAMPAIGN_LEVEL_COUNT = 10;
+
 // ----- Player tuning (in tiles; converted to px in Player.ts via TILE_SIZE) -----
 
 export const FLIGHT_SPEED_TILES = 40.0;       // every directed launch
@@ -24,7 +30,7 @@ export const JUMP_HEIGHT_TILES = 2.0;         // peak above the floor
 // Vertical lift on left/right launches from the floor. Player rises
 // this much (constant-velocity, no gravity) before transitioning to
 // horizontal flight. Originally 1 tile; halved per playtesting.
-export const RISE_LIFT_TILES = 0.2;
+export const RISE_LIFT_TILES = 0.0;
 export const REBOUND_DISTANCE_TILES = 0.5;    // wall-bounce backoff
 export const CONVEYOR_SPEED_TILES = 4.0;      // horizontal push while standing on a conveyor
 export const TURRET_TRACK_SPEED = 3.0;        // rad/sec — how fast the turret barrel rotates toward the player
@@ -35,14 +41,46 @@ export const PAUSE_TIME_SEC = 0.1;            // brief delay at apex / after reb
 // How long the death animation plays before the player respawns at spawn.
 // Long enough for the body to clearly fall off-screen + spin a few times.
 export const DEATH_PAUSE_SEC = 1.2;
-// After a portal teleports the player, BOTH portals in the pair disable
-// for this many seconds — prevents the player materializing inside the
-// partner from immediately ping-ponging back. 0.3s is enough for any
-// reasonable forward velocity to clear the partner's overlap area.
+// After a portal teleports the player, the SOURCE portal disables for
+// this many seconds — short, just covers the moment the player passes
+// out of its overlap circle.
 export const PORTAL_COOLDOWN_SEC = 0.3;
+// Destination portal stays disabled longer: roughly the time it takes
+// the player to move ~2 tiles after materialising. Covers the worst
+// real-world case — flying into a wall right next to the portal,
+// rebounding 0.5 tiles + PAUSE_TIME + ~2 tiles of gravity-driven fall
+// ≈ 0.5 s — without which the player drifts back into the destination
+// and gets teleported again.
+export const PORTAL_DESTINATION_COOLDOWN_SEC = 0.5;
 // Fade-to-black duration for cross-page teleport / exit transitions.
 // One leg (fade-out OR fade-in); the full transition is 2 × this.
 export const FADE_DURATION_MS = 200;
+
+// ----- Camera shake on wall hit -----
+
+// Distance (in tiles) flown before the impact at which shake fires at
+// 100% magnitude. Below this, no shake — short bumps shouldn't wiggle
+// the screen. Linear scaling above this; see SHAKE_SLOPE_*.
+export const SHAKE_MIN_CELLS = 10;
+
+// Per-cell magnitude growth above SHAKE_MIN_CELLS. Same slope on both
+// axes today — kept as separate constants so each can be retuned
+// independently without touching the formula.
+//   horizontal: 10 cells → 100%, 30 cells → 300%   (slope 10% per cell)
+//   vertical:   10 cells → 100%, 15 cells → 150%   (slope 10% per cell)
+export const SHAKE_SLOPE_PER_CELL_H = 0.10;
+export const SHAKE_SLOPE_PER_CELL_V = 0.10;
+
+// 100% shake magnitude expressed as a Phaser camera-shake intensity
+// (fraction of the viewport size each frame can offset). 0.0025 ≈ 2 px
+// max shift on a 768 px viewport — gentle "thunk" for a wall bump,
+// scales up to ~6 px at 300%.
+export const SHAKE_BASE_INTENSITY = 0.0025;
+
+// Shake duration in ms. Fixed regardless of magnitude — amplitude
+// already encodes "how hard". Short enough not to interfere with the
+// PAUSE_TIME_SEC + rebound feel.
+export const SHAKE_DURATION_MS = 180;
 
 // ----- Death animation -----
 

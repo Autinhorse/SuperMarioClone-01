@@ -260,7 +260,11 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        background: #1a1d22;
+        /* Same backdrop as the in-game scenes' background. Solid color
+           is the fallback shown before the image loads (or if it 404s);
+           cover-sizing matches PlayScene's full-viewport stretch without
+           distorting the aspect ratio. */
+        background: #1a1d22 url('/sprites/background.png') center / cover no-repeat;
         z-index: 5;
         font-family: system-ui, -apple-system, sans-serif;
         color: #cccccc;

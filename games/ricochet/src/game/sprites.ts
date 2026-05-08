@@ -23,7 +23,6 @@ export function loadSprites(scene: Phaser.Scene): void {
   scene.load.image('coin_1', 'sprites/coin_1.png');
   scene.load.image('glass-wall', 'sprites/glass-wall.png');
   scene.load.image('start-banner', 'sprites/start-banner.png');
-  scene.load.image('end-banner', 'sprites/end-banner.png');
 
   // Spikes — directional uses spike_0 base + spike_1 teeth, spike-block
   // uses spike_2 base + spike_3 teeth.
@@ -65,12 +64,12 @@ export function loadSprites(scene: Phaser.Scene): void {
     scene.load.image(`teleport_${f}`, `sprites/teleport_${f}.png`);
   }
 
-  // Conveyor — cw/ccw × left/middle/right × 2 frames. Texture keys
+  // Conveyor — cw/ccw × left/middle/right × 3 frames. Texture keys
   // use cw/ccw; on-disk filenames use the longer clockwise/counter-
   // clockwise spellings.
   for (const [dirKey, dirFile] of [['cw', 'clockwise'], ['ccw', 'counterclockwise']] as const) {
     for (const piece of ['left', 'middle', 'right'] as const) {
-      for (let f = 0; f < 2; f++) {
+      for (let f = 0; f < 3; f++) {
         scene.load.image(
           `conveyor_${dirKey}_${piece}_${f}`,
           `sprites/conveyor-${dirFile}-${piece}_${f}.png`,

@@ -7,6 +7,7 @@ import {
 } from '../config/feel';
 import { validateLevel } from '../../shared/level-format/load';
 import { conveyorPieceFor, loadSprites } from '../sprites';
+import { SOUND_KEYS, SOUND_VOLUMES, loadSounds } from '../sounds';
 import { saveLevelToHost } from '../../embed';
 import type {
   CardinalDir,
@@ -63,10 +64,12 @@ const LEVEL_KEY = 'editor-level';
 // One ID per placeable thing — direction / color / target-page now live
 // in `toolParams` instead of being baked into the tool name. Selecting a
 // tool reveals its params panel; param changes update the persistent
-// state and the next click uses those values. `select` is a non-placement
-// mode: clicks pick up an existing element to drag-and-drop.
+// state and the next click uses those values. There is no `select` tool:
+// selection happens implicitly when the user clicks an existing element
+// (see onPointerDown). With no tool active, the editor is in "pointer
+// mode" — clicks select / deselect, drags move elements, but empty
+// cells do nothing.
 type ToolId =
-  | 'select'
   | 'wall' | 'coin' | 'glass' | 'spike_block'
   | 'spike' | 'conveyor' | 'cannon' | 'turret' | 'gear' | 'laser_cannon'
   | 'portal' | 'key' | 'key_wall' | 'teleport' | 'text'
@@ -80,6 +83,22 @@ type ToolId =
 // accidentally paint a wrong-direction streak.
 const DRAG_ENABLED_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
   'wall', 'coin', 'glass', 'spike', 'eraser',
+]);
+
+// Tools whose placed elements have per-instance params worth showing
+// immediately. After a successful placement we auto-select the new
+// element so the full params panel (including ones absent from the
+// tool-sticky panel, like cannon period or laser delay) is editable
+// without a follow-up click. Excluded:
+//   wall / coin       — synthesized refs, no editable params
+//   spawn / exit      — singletons, no editable params
+//   portal            — multi-cell, color is shared per pair (already
+//                       on the tool-sticky panel); findElementAt skips
+//                       portals by design
+//   eraser            — destructive, never selects
+const AUTO_SELECT_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
+  'glass', 'spike_block', 'spike', 'conveyor', 'cannon', 'turret',
+  'laser_cannon', 'gear', 'key', 'key_wall', 'teleport', 'text',
 ]);
 
 // Per-tool sticky params: each entry remembers what the user last picked
@@ -108,7 +127,7 @@ interface ToolParamsState {
 
 // Per-tool defaults applied at placement time. 13a-3 will add a params
 // panel to override these per-instance after placement.
-const DEFAULT_GLASS_DELAY = 1.0;
+const DEFAULT_GLASS_DELAY = 1.5;
 const DEFAULT_CANNON_PERIOD = 2.0;
 const DEFAULT_CANNON_BULLET_SPEED = 8.0;
 const DEFAULT_TURRET_PERIOD = 2.0;
@@ -268,10 +287,16 @@ export class EditScene extends Phaser.Scene {
     // All visual sprites (shared with PlayScene). EditScene shows
     // static frames; the AnimationManager defs live in PlayScene only.
     loadSprites(this);
+    loadSounds(this);
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(COLOR_BACKGROUND);
+
+    // Stop the gameplay BGM if we returned here from a Play test —
+    // the editor isn't a music context, and the sound manager is
+    // global so the music would otherwise keep playing.
+    this.sound.get(SOUND_KEYS.bgm)?.stop();
 
     // Phaser globally captures any key registered via `addKey()` /
     // `createCursorKeys()` (PlayScene does both for SPACE + arrows)
@@ -490,6 +515,8 @@ export class EditScene extends Phaser.Scene {
     modal.addEventListener('click', (ev) => {
       const target = ev.target as HTMLElement;
       const action = target.getAttribute('data-modal-action');
+      if (!action) return;
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
       if (action === 'save') {
         modal.remove();
         onSave();
@@ -558,7 +585,6 @@ export class EditScene extends Phaser.Scene {
       </div>
       <button data-action="play" class="palette-btn palette-btn-primary palette-btn-full">▶ Play</button>
       <div class="palette-divider"></div>
-      <button data-tool="select" class="palette-btn palette-btn-full">Select / Move</button>
       <div class="palette-tools">
         <button data-tool="wall" class="palette-btn">Wall</button>
         <button data-tool="coin" class="palette-btn">Coin</button>
@@ -617,6 +643,15 @@ export class EditScene extends Phaser.Scene {
   private onPaletteClick(ev: MouseEvent): void {
     const target = ev.target as HTMLElement;
 
+    // UI click sound for the "navigation"-class buttons only — file/page
+    // actions and tool picks. Steppers, color swatches, direction
+    // pickers etc. are continuous editing inputs and would spam the
+    // SFX channel; they intentionally stay silent.
+    const isNavClick = target.hasAttribute('data-action') || target.hasAttribute('data-tool');
+    if (isNavClick) {
+      this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
+    }
+
     const action = target.getAttribute('data-action');
     if (action) {
       this.handlePaletteAction(action);
@@ -625,11 +660,16 @@ export class EditScene extends Phaser.Scene {
 
     const tool = target.getAttribute('data-tool');
     if (tool) {
-      this.selectedTool = tool as ToolId;
-      // Switching tools always ends a gear-path edit session and
-      // clears the instance selection — both are sub-states of the
-      // Select tool. closed flag is left as-is; the user explicitly
-      // opens or closes via the gear-finish-open button or click-home.
+      // Click the active tool again → deactivate, returning to the
+      // "no tool" pointer mode. Without this, once any tool is picked
+      // there'd be no path back to pointer mode, so "click empty to
+      // deselect" could never fire.
+      const next = this.selectedTool === (tool as ToolId) ? null : (tool as ToolId);
+      this.selectedTool = next;
+      // Switching (or clearing) tools always ends a gear-path edit
+      // session and clears the instance selection. closed flag stays
+      // as-is; the user explicitly opens or closes via the
+      // gear-finish-open button or click-home.
       const hadSubState = this.gearEditState != null || this.selectedElement != null;
       this.gearEditState = null;
       this.selectedElement = null;
@@ -638,46 +678,14 @@ export class EditScene extends Phaser.Scene {
       this.renderParamsPanel();
       return;
     }
-    if (!this.selectedTool) return;
-
-    const dir = target.getAttribute('data-param-dir');
-    if (dir) {
-      if (this.selectedTool === 'spike' || this.selectedTool === 'cannon') {
-        this.toolParams[this.selectedTool] = dir as CardinalDir;
-      } else if (this.selectedTool === 'conveyor') {
-        this.toolParams.conveyor = dir as ConveyorDir;
-      }
-      this.renderParamsPanel();
-      return;
-    }
-
-    const color = target.getAttribute('data-param-color');
-    if (color !== null) {
-      if (
-        this.selectedTool === 'portal' ||
-        this.selectedTool === 'key' ||
-        this.selectedTool === 'key_wall'
-      ) {
-        this.toolParams[this.selectedTool] = parseInt(color, 10);
-      }
-      this.renderParamsPanel();
-      return;
-    }
-
-    const step = target.getAttribute('data-param-step');
-    if (step && this.selectedTool === 'teleport') {
-      const max = this.level.pages.length - 1;
-      const next = this.toolParams.teleport + parseInt(step, 10);
-      this.toolParams.teleport = Math.max(0, Math.min(next, max));
-      this.renderParamsPanel();
-      return;
-    }
-
-    // ---- Instance editing (Select tool with selectedElement) ----
+    // ---- Instance editing (data-elem-*) ----
     // Routes click attributes prefixed `data-elem-*` straight into the
     // selected element's ref. Each handler narrows the SelectedElement
     // discriminated union before mutating, so unrelated kinds silently
-    // ignore inapplicable inputs.
+    // ignore inapplicable inputs. Runs BEFORE the `!selectedTool` guard
+    // because the element panel is reachable in pointer mode (no tool
+    // active) — the user can click an element and edit its params
+    // without picking a tool first.
     if (this.selectedElement) {
       const elemDir = target.getAttribute('data-elem-dir');
       if (elemDir) {
@@ -734,6 +742,43 @@ export class EditScene extends Phaser.Scene {
         this.adjustElementProp(this.selectedElement, elemProp, parseInt(elemStep, 10));
         return;
       }
+    }
+
+    // Tool-param branches below all key off `selectedTool` — when no
+    // tool is active, they silently no-op.
+    if (!this.selectedTool) return;
+
+    const dir = target.getAttribute('data-param-dir');
+    if (dir) {
+      if (this.selectedTool === 'spike' || this.selectedTool === 'cannon') {
+        this.toolParams[this.selectedTool] = dir as CardinalDir;
+      } else if (this.selectedTool === 'conveyor') {
+        this.toolParams.conveyor = dir as ConveyorDir;
+      }
+      this.renderParamsPanel();
+      return;
+    }
+
+    const color = target.getAttribute('data-param-color');
+    if (color !== null) {
+      if (
+        this.selectedTool === 'portal' ||
+        this.selectedTool === 'key' ||
+        this.selectedTool === 'key_wall'
+      ) {
+        this.toolParams[this.selectedTool] = parseInt(color, 10);
+      }
+      this.renderParamsPanel();
+      return;
+    }
+
+    const step = target.getAttribute('data-param-step');
+    if (step && this.selectedTool === 'teleport') {
+      const max = this.level.pages.length - 1;
+      const next = this.toolParams.teleport + parseInt(step, 10);
+      this.toolParams.teleport = Math.max(0, Math.min(next, max));
+      this.renderParamsPanel();
+      return;
     }
 
     // Laser cannon params — direction (4 cardinals), rotate mode (none /
@@ -982,6 +1027,19 @@ export class EditScene extends Phaser.Scene {
   // is currently selected. Empty for tools without editable params.
   private renderParamsPanel(): void {
     if (!this.paramsPanel) return;
+    // Per-instance editing wins over tool params: when an element is
+    // selected (auto-selected from a click on a placed object), its
+    // own params panel takes priority regardless of which placement
+    // tool is active.
+    if (this.selectedElement) {
+      this.paramsPanel.innerHTML = elementParamHtml(this.selectedElement, {
+        pageCount: this.level.pages.length,
+        isEditingGearPath:
+          this.selectedElement.kind === 'gear' &&
+          this.gearEditState?.gear === this.selectedElement.ref,
+      });
+      return;
+    }
     if (!this.selectedTool) {
       this.paramsPanel.innerHTML = '';
       return;
@@ -1007,18 +1065,6 @@ export class EditScene extends Phaser.Scene {
           this.toolParams.teleport,
           this.level.pages.length,
         );
-        return;
-      case 'select':
-        // Per-instance editing for the selected element, or empty when
-        // nothing is selected.
-        this.paramsPanel.innerHTML = this.selectedElement
-          ? elementParamHtml(this.selectedElement, {
-              pageCount: this.level.pages.length,
-              isEditingGearPath:
-                this.selectedElement.kind === 'gear' &&
-                this.gearEditState?.gear === this.selectedElement.ref,
-            })
-          : '';
         return;
       case 'laser_cannon':
         this.paramsPanel.innerHTML = laserCannonParamHtml(this.toolParams.laser_cannon);
@@ -1046,19 +1092,25 @@ export class EditScene extends Phaser.Scene {
       // duration: 0 → continuous; otherwise stepped 0.5s up to 30.
       // downtime: min 0.5s so a non-continuous cycle has a real off
       // phase (mirrors the laser's downtime clamp).
+      // delay: 0 → no stagger; stepped 0.5s up to 30.
       if (prop === 'duration') {
         const cur = sel.ref.duration ?? 0;
         sel.ref.duration = clamp(cur + dir * 0.5, 0, 30);
       } else if (prop === 'downtime') {
         const cur = sel.ref.downtime ?? 3.0;
         sel.ref.downtime = clamp(cur + dir * 0.5, 0.5, 30);
+      } else if (prop === 'delay') {
+        const cur = sel.ref.delay ?? 0;
+        sel.ref.delay = clamp(cur + dir * 0.5, 0, 30);
       }
     } else if (sel.kind === 'cannon') {
       if (prop === 'period') sel.ref.period = clamp(sel.ref.period + dir * 0.5, 0.5, 30);
       else if (prop === 'bullet_speed') sel.ref.bullet_speed = clamp(sel.ref.bullet_speed + dir * 0.5, 1, 30);
+      else if (prop === 'delay') sel.ref.delay = clamp((sel.ref.delay ?? 0) + dir * 0.5, 0, 30);
     } else if (sel.kind === 'turret') {
       if (prop === 'period') sel.ref.period = clamp(sel.ref.period + dir * 0.5, 0.5, 30);
       else if (prop === 'bullet_speed') sel.ref.bullet_speed = clamp(sel.ref.bullet_speed + dir * 0.5, 1, 30);
+      else if (prop === 'delay') sel.ref.delay = clamp((sel.ref.delay ?? 0) + dir * 0.5, 0, 30);
     } else if (sel.kind === 'gear') {
       if (prop === 'size') sel.ref.size = clamp(sel.ref.size + dir, 1, 4);
       else if (prop === 'speed') sel.ref.speed = clamp(sel.ref.speed + dir * 0.5, 0, 20);
@@ -1069,6 +1121,7 @@ export class EditScene extends Phaser.Scene {
     } else if (sel.kind === 'laser_cannon') {
       if (prop === 'duration') sel.ref.duration = clamp(sel.ref.duration + dir * 0.5, 0, 30);
       else if (prop === 'downtime') sel.ref.downtime = clamp(sel.ref.downtime + dir * 0.5, 0.5, 30);
+      else if (prop === 'delay') sel.ref.delay = clamp((sel.ref.delay ?? 0) + dir * 0.5, 0, 30);
     } else if (sel.kind === 'text_label') {
       // Width / height step by 1 cell; clamp at 1 minimum and the
       // current page's grid dimensions so the text never extends
@@ -1095,22 +1148,44 @@ export class EditScene extends Phaser.Scene {
   // --- pointer handlers --------------------------------------------------
 
   private onPointerDown(p: Phaser.Input.Pointer): void {
-    if (!this.selectedTool) return;
     const cell = this.cellAtPointer(p);
     if (!cell) return;
 
-    if (this.selectedTool === 'select') {
-      // Open a gesture; click-vs-drag is decided in onPointerMove /
-      // onPointerUp based on whether the pointer leaves the start cell.
+    // Eraser is the explicit "remove" tool — clicks/drags on filled
+    // cells erase rather than auto-select.
+    if (this.selectedTool === 'eraser') {
+      this.applyTool('eraser', cell.col, cell.row);
+      this.renderPage();
+      this.placementDragState = { lastCol: cell.col, lastRow: cell.row };
+      return;
+    }
+
+    // Auto-select gesture: clicking a filled cell (or any click while in
+    // gear-path-edit) opens a gesture that discriminates click-vs-drag
+    // in onPointerMove / onPointerUp. Gear-edit also routes through the
+    // gesture so empty-cell clicks become waypoint-add operations.
+    const page = this.level.pages[this.currentPageIndex];
+    const occupied = page != null && this.isOccupied(page, cell.col, cell.row);
+    if (occupied || this.gearEditState) {
       this.selectGesture = { start: cell, dragGhost: null };
       return;
     }
 
-    this.applyTool(this.selectedTool, cell.col, cell.row);
-    this.renderPage();
-
-    if (DRAG_ENABLED_TOOLS.has(this.selectedTool)) {
-      this.placementDragState = { lastCol: cell.col, lastRow: cell.row };
+    // Empty cell, no gear-edit, no eraser. If a placement tool is active,
+    // place; otherwise (pointer mode) treat the click as a deselect.
+    if (this.selectedTool) {
+      const placed = this.applyTool(this.selectedTool, cell.col, cell.row);
+      if (placed) this.autoSelectPlaced(this.selectedTool, cell.col, cell.row);
+      this.renderPage();
+      if (DRAG_ENABLED_TOOLS.has(this.selectedTool)) {
+        this.placementDragState = { lastCol: cell.col, lastRow: cell.row };
+      }
+      return;
+    }
+    if (this.selectedElement) {
+      this.selectedElement = null;
+      this.renderPage();
+      this.renderParamsPanel();
     }
   }
 
@@ -1128,7 +1203,8 @@ export class EditScene extends Phaser.Scene {
     ) return;
     // applyTool silently no-ops on occupied cells (issue #3), so a drag
     // streak naturally skips over existing elements without overwriting.
-    this.applyTool(this.selectedTool, cell.col, cell.row);
+    const placed = this.applyTool(this.selectedTool, cell.col, cell.row);
+    if (placed) this.autoSelectPlaced(this.selectedTool, cell.col, cell.row);
     this.renderPage();
     this.placementDragState.lastCol = cell.col;
     this.placementDragState.lastRow = cell.row;
@@ -1240,6 +1316,17 @@ export class EditScene extends Phaser.Scene {
             canMove = !this.isOccupied(page, target.col, target.row);
           }
           if (canMove) {
+            // For wall/coin selections, the synthetic ref doesn't
+            // share identity with anything in the level data, so
+            // moveElementAt's tile-swap branch can't update it for
+            // us. Capture whether the currently-selected element
+            // sits at the source cell BEFORE the move, so we can
+            // re-anchor it to the destination after. Array-backed
+            // elements get their x/y mutated in-place, so the same
+            // re-anchor is a redundant no-op for them.
+            const selectionAtSource =
+              this.selectedElement?.ref.x === this.selectGesture.start.col &&
+              this.selectedElement?.ref.y === this.selectGesture.start.row;
             this.moveElementAt(
               page,
               this.selectGesture.start.col,
@@ -1247,6 +1334,10 @@ export class EditScene extends Phaser.Scene {
               target.col,
               target.row,
             );
+            if (selectionAtSource && this.selectedElement) {
+              this.selectedElement.ref.x = target.col;
+              this.selectedElement.ref.y = target.row;
+            }
           }
         }
       }
@@ -1345,11 +1436,30 @@ export class EditScene extends Phaser.Scene {
     }
   }
 
-  // Returns a SelectedElement wrapper around whatever per-page array
-  // entry sits at (col, row), or null if none. Walls (W) and coins (C)
-  // are tile chars with no editable params, so they aren't selectable.
-  // Portals are also skipped — color is shared per pair, and both
-  // points already drag-move individually.
+  // After a successful applyTool placement, select the just-placed
+  // element so the full per-instance params panel is editable without
+  // the user having to click the new element. Gated by AUTO_SELECT_TOOLS
+  // so structural placements (wall, coin, spawn, exit, portal) don't
+  // hijack the panel with a header-only display. The caller is
+  // responsible for the trailing renderPage() that actually draws the
+  // resulting selection highlight.
+  private autoSelectPlaced(tool: ToolId, col: number, row: number): void {
+    if (!AUTO_SELECT_TOOLS.has(tool)) return;
+    const page = this.level.pages[this.currentPageIndex];
+    if (!page) return;
+    const sel = this.findElementAt(page, col, row);
+    if (!sel) return;
+    this.selectedElement = sel;
+    this.renderParamsPanel();
+  }
+
+  // Returns a SelectedElement wrapper around whatever the user clicked
+  // at (col, row), or null if the cell is empty. Walls (W) and coins
+  // (C) are tile-string chars with no array ref, so we synthesise a
+  // `{x, y}` ref for them — the panel just shows the kind, but the
+  // highlight + drag-move work the same as for array-backed elements.
+  // Portals are skipped — color is shared per pair, and both points
+  // already drag-move individually.
   private findElementAt(page: PageData, col: number, row: number): SelectedElement | null {
     const at = (e: { x: number; y: number }) => e.x === col && e.y === row;
     let e;
@@ -1370,6 +1480,24 @@ export class EditScene extends Phaser.Scene {
       (t) => col >= t.x && col < t.x + t.width && row >= t.y && row < t.y + t.height,
     );
     if (tl) return { kind: 'text_label', ref: tl };
+    // Singleton positions (start, exit). Live refs into the level data
+    // so drag-move auto-tracks via in-place mutation.
+    if (page.spawn.x === col && page.spawn.y === row) {
+      return { kind: 'spawn', ref: page.spawn };
+    }
+    if (
+      this.level.exit.page === this.currentPageIndex &&
+      this.level.exit.x === col &&
+      this.level.exit.y === row
+    ) {
+      return { kind: 'exit', ref: this.level.exit };
+    }
+    // Tile-char fallback. Lowest priority so an array-backed element
+    // sitting on the same cell (which shouldn't happen, but defensive)
+    // wins.
+    const ch = page.tiles[row]?.charAt(col);
+    if (ch === 'W') return { kind: 'wall', ref: { x: col, y: row } };
+    if (ch === 'C') return { kind: 'coin', ref: { x: col, y: row } };
     return null;
   }
 
@@ -1383,7 +1511,29 @@ export class EditScene extends Phaser.Scene {
       this.selectedElement = null;
       return;
     }
-    const ref = this.selectedElement.ref;
+    const sel = this.selectedElement;
+    // Wall / coin selections are tile-char backed: the synthetic ref
+    // isn't stored anywhere, so `includes` would never match. Check
+    // the tile char at the recorded cell instead.
+    if (sel.kind === 'wall' || sel.kind === 'coin') {
+      const ch = page.tiles[sel.ref.y]?.charAt(sel.ref.x);
+      const expected = sel.kind === 'wall' ? 'W' : 'C';
+      if (ch !== expected) this.selectedElement = null;
+      return;
+    }
+    // Singletons: spawn always exists on its page; exit may have been
+    // erased (sentinel page = -1) — clear in that case.
+    if (sel.kind === 'spawn') {
+      if (sel.ref !== page.spawn) this.selectedElement = null;
+      return;
+    }
+    if (sel.kind === 'exit') {
+      if (sel.ref !== this.level.exit || this.level.exit.page !== this.currentPageIndex) {
+        this.selectedElement = null;
+      }
+      return;
+    }
+    const ref = sel.ref;
     const present =
       page.glass_walls?.includes(ref as GlassWallData) ||
       page.spike_blocks?.includes(ref as SpikeBlockData) ||
@@ -1516,23 +1666,27 @@ export class EditScene extends Phaser.Scene {
   // any cell with an existing element rejects new placements (the user
   // must erase first). Eraser is its own branch. All directional /
   // colored / target-bearing tools read their settings from `toolParams`.
-  private applyTool(tool: ToolId, col: number, row: number): void {
+  // Returns true iff a placement actually wrote something to the page,
+  // so the caller can auto-select the newly-placed element (giving the
+  // user immediate access to its full per-instance params panel without
+  // needing a follow-up click). Eraser + occupied-cell rejections return
+  // false so the caller skips the auto-select.
+  private applyTool(tool: ToolId, col: number, row: number): boolean {
     const page = this.level.pages[this.currentPageIndex]!;
 
-    if (tool === 'eraser') { this.eraseAt(page, col, row); return; }
-    if (tool === 'select') return;  // select doesn't place; handled separately
+    if (tool === 'eraser') { this.eraseAt(page, col, row); return false; }
 
-    if (this.isOccupied(page, col, row)) return;
+    if (this.isOccupied(page, col, row)) return false;
 
     if (tool === 'spawn')  {
       page.spawn = { x: col, y: row };
       this.dirty = true;
-      return;
+      return true;
     }
     if (tool === 'exit')   {
       this.level.exit = { page: this.currentPageIndex, x: col, y: row };
       this.dirty = true;
-      return;
+      return true;
     }
 
     // `mutated` lets us mark dirty exactly once when a branch actually
@@ -1636,6 +1790,7 @@ export class EditScene extends Phaser.Scene {
       }
     }
     if (mutated) this.dirty = true;
+    return mutated;
   }
 
   // Multi-cell area-clear check used by text-label placement and drag-

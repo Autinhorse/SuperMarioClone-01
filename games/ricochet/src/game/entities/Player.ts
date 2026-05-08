@@ -14,6 +14,7 @@ import {
   DEATH_POP_TILES,
   DEATH_SPIN_RAD_PER_SEC,
 } from '../config/feel';
+import { SOUND_KEYS, SOUND_VOLUMES } from '../sounds';
 
 // GameObjects tagged with this data key carry a +1 (cw) or -1 (ccw)
 // number indicating the conveyor's push direction. The Player's idle
@@ -33,8 +34,10 @@ export enum PlayerState {
   JUMPING,        // vertical jump arc; input accepted during ascent AND descent
   REBOUNDING,     // 1-tile horizontal rebound after hitting a wall
   PAUSED,         // brief delay before falling under gravity
-  FALLING,        // gravity-driven free fall, no input
-  FALLING_INPUT,  // gravity-driven fall after a fly-up ceiling bump; input accepted
+  FALLING_INPUT,  // gravity-driven fall (post-obstacle / post-PAUSED); input accepted.
+                  //   Design rule: every non-keypress motion accepts input. The
+                  //   only input-locked states are the keypress-triggered launches
+                  //   (RISING / FLYING_*). There is no input-locked FALLING.
   DEAD,           // pop + spin + freefall animation; collisions disabled
 }
 
@@ -51,10 +54,22 @@ const SHAPE_VMOVE = { w: TILE_SIZE - 4, h: TILE_SIZE - 2 };
 const GRAVITY_STATES = new Set<PlayerState>([
   PlayerState.IDLE,           // gravity keeps the body pressed to the floor
   PlayerState.JUMPING,        // gravity creates the natural arc
-  PlayerState.FALLING,
   PlayerState.FALLING_INPUT,
   PlayerState.DEAD,           // gravity drives the freefall after the death pop
 ]);
+
+// "Flight" = directed-launch motion states. Used by syncAnimation to
+// fire Fly.wav on the single transition into a launch (non-flight →
+// flight) without re-triggering on the brief RISING → FLYING_H step
+// or on mid-air re-launches between flight states.
+function isFlightState(s: PlayerState): boolean {
+  return (
+    s === PlayerState.RISING ||
+    s === PlayerState.FLYING_H ||
+    s === PlayerState.FLYING_UP ||
+    s === PlayerState.FLYING_DOWN
+  );
+}
 
 export class Player extends Phaser.GameObjects.Sprite {
   // Narrow body type — set in constructor via physics.add.existing.
@@ -86,11 +101,19 @@ export class Player extends Phaser.GameObjects.Sprite {
   private riseTargetY = 0;          // y-coord to stop the pre-launch rise at
   private reboundTargetX = 0;       // x-coord to stop the rebound at
   private pauseTimer = 0;
-  private postPauseState: PlayerState = PlayerState.FALLING;
+  private postPauseState: PlayerState = PlayerState.FALLING_INPUT;
   // Brief immunity after dying — debounces double-deaths from multiple
   // overlapping hazard bodies in the same frame, and gives the player a
   // moment at spawn before any spawn-adjacent hazard re-kills them.
   private dyingTimer = 0;
+  // Position captured at the moment we entered the current motion
+  // state. Read at wall-hit time to derive cells-flown for camera
+  // shake. motionStartX is only meaningful while in FLYING_H;
+  // motionStartY is meaningful while in FLYING_UP / FLYING_DOWN /
+  // JUMPING / FALLING_INPUT. Transitions out of these states leave
+  // stale values, but no consumer reads them outside their state.
+  private motionStartX = 0;
+  private motionStartY = 0;
   // Original spawn coordinates, captured at construction. die() teleports
   // the body back here.
   private readonly spawnPosition: Phaser.Math.Vector2;
@@ -152,7 +175,6 @@ export class Player extends Phaser.GameObjects.Sprite {
       case PlayerState.JUMPING:       this.jumping(dt); break;
       case PlayerState.REBOUNDING:    this.rebounding(dt); break;
       case PlayerState.PAUSED:        this.paused(dt); break;
-      case PlayerState.FALLING:       this.falling(dt); break;
       case PlayerState.FALLING_INPUT: this.fallingInput(dt); break;
       case PlayerState.DEAD:          this.dead(dt); break;
     }
@@ -171,6 +193,34 @@ export class Player extends Phaser.GameObjects.Sprite {
     const to = this.state;
     if (from === to) return;
     this.prevState = to;
+
+    // Wall-hit shake: capture the position where the new motion state
+    // begins so the wall-hit handler can compute cells flown. Scoped
+    // to motion states that can terminate against a wall.
+    if (to === PlayerState.FLYING_H) {
+      this.motionStartX = this.x;
+    }
+    if (
+      to === PlayerState.FLYING_UP ||
+      to === PlayerState.FLYING_DOWN ||
+      to === PlayerState.JUMPING ||
+      to === PlayerState.FALLING_INPUT
+    ) {
+      this.motionStartY = this.y;
+    }
+
+    // Sound-effect cues on motion-state transitions. Jump fires on the
+    // single IDLE → JUMPING entry. Fly fires on every transition INTO
+    // a flight state from a non-flight state — so a fresh launch sounds
+    // once even though the engine briefly passes through RISING before
+    // FLYING_H, and a mid-air re-launch (FLYING_X → other FLYING_X) is
+    // skipped because both sides are flight states.
+    if (from === PlayerState.IDLE && to === PlayerState.JUMPING) {
+      this.scene.sound.play(SOUND_KEYS.jump, { volume: SOUND_VOLUMES.sfx });
+    }
+    if (isFlightState(to) && !isFlightState(from)) {
+      this.scene.sound.play(SOUND_KEYS.fly, { volume: SOUND_VOLUMES.sfx });
+    }
 
     // Land: any motion → IDLE. Plays roll_0 briefly then snaps to idle.
     // Skipped if the transition came from DEAD (respawn handles its own
@@ -220,7 +270,10 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.body.setVelocityX(conveyorDir * this.conveyorSpeed);
 
     if (!this.isOnFloor()) {
-      this.state = PlayerState.FALLING;
+      // Floor vanished from under the player (glass shatter, retracting
+      // timed block, conveyor push past an edge). FALLING_INPUT — every
+      // non-keypress fall accepts input.
+      this.state = PlayerState.FALLING_INPUT;
       return;
     }
 
@@ -275,6 +328,7 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.body.setVelocity(this.direction * this.flightSpeed, 0);
     if ((this.direction > 0 && this.isOnRightWall()) ||
         (this.direction < 0 && this.isOnLeftWall())) {
+      this.emitWallHit('wall', Math.abs(this.x - this.motionStartX));
       this.startRebound();
     }
   }
@@ -282,6 +336,7 @@ export class Player extends Phaser.GameObjects.Sprite {
   private flyingUp(_dt: number): void {
     this.body.setVelocity(0, -this.flightSpeed);
     if (this.isOnCeiling()) {
+      this.emitWallHit('ceiling', Math.abs(this.y - this.motionStartY));
       this.body.setVelocity(0, 0);
       this.pauseTimer = PAUSE_TIME_SEC;
       this.postPauseState = PlayerState.FALLING_INPUT;
@@ -292,6 +347,7 @@ export class Player extends Phaser.GameObjects.Sprite {
   private flyingDown(_dt: number): void {
     this.body.setVelocity(0, this.flightSpeed);
     if (this.isOnFloor()) {
+      this.emitWallHit('floor', Math.abs(this.y - this.motionStartY));
       this.body.setVelocity(0, 0);
       this.state = PlayerState.IDLE;
     }
@@ -330,11 +386,13 @@ export class Player extends Phaser.GameObjects.Sprite {
     // No directional input — natural arc.
     const vy = this.body.velocity.y;
     if (this.isOnCeiling() && vy < 0) {
+      this.emitWallHit('ceiling', Math.abs(this.y - this.motionStartY));
       this.body.setVelocity(0, 0);
       this.pauseTimer = PAUSE_TIME_SEC;
       this.postPauseState = PlayerState.FALLING_INPUT;
       this.state = PlayerState.PAUSED;
     } else if (this.isOnFloor() && vy >= 0) {
+      this.emitWallHit('floor', Math.abs(this.y - this.motionStartY));
       this.body.setVelocity(0, 0);
       this.state = PlayerState.IDLE;
     }
@@ -409,17 +467,7 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.pauseTimer -= dt;
     if (this.pauseTimer <= 0) {
       this.state = this.postPauseState;
-      this.postPauseState = PlayerState.FALLING;  // reset for next time
-    }
-  }
-
-  private falling(_dt: number): void {
-    // Engine gravity handles vy (capped at terminal by maxVelocity). We
-    // just pin vx at zero so the body falls straight down.
-    this.body.setVelocityX(0);
-    if (this.isOnFloor()) {
-      this.body.setVelocity(0, 0);
-      this.state = PlayerState.IDLE;
+      this.postPauseState = PlayerState.FALLING_INPUT;  // reset for next time
     }
   }
 
@@ -448,9 +496,25 @@ export class Player extends Phaser.GameObjects.Sprite {
     }
 
     if (this.isOnFloor()) {
+      this.emitWallHit('floor', Math.abs(this.y - this.motionStartY));
       this.body.setVelocity(0, 0);
       this.state = PlayerState.IDLE;
     }
+  }
+
+  // Wall-hit notifier consumed by PlayScene for camera shake AND for
+  // selecting between HitWall vs LandGround sound effects. `surface`
+  // is the contact type (wall = side, ceiling = top, floor = bottom);
+  // axis derives from it (wall → horizontal, ceiling/floor → vertical).
+  // Distances under any SHAKE_MIN_CELLS-style threshold are still
+  // emitted — consumers gate themselves.
+  private emitWallHit(
+    surface: 'wall' | 'ceiling' | 'floor',
+    distancePx: number,
+  ): void {
+    const axis: 'horizontal' | 'vertical' = surface === 'wall' ? 'horizontal' : 'vertical';
+    const cells = distancePx / TILE_SIZE;
+    this.emit('wall-hit', { axis, surface, cells });
   }
 
   // ----- Public API -----
@@ -465,6 +529,7 @@ export class Player extends Phaser.GameObjects.Sprite {
     if (this.state === PlayerState.DEAD) {
       return;
     }
+    this.scene.sound.play(SOUND_KEYS.death, { volume: SOUND_VOLUMES.sfx });
     this.body.setVelocity(0, -this.deathInitialVelocity);
     // Disable collisions in all directions so the body can fall through
     // walls / floors during the death animation. Restored on respawn.
@@ -497,7 +562,7 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.rotation = 0;
     this.direction = 0;
     this.pauseTimer = 0;
-    this.postPauseState = PlayerState.FALLING;
+    this.postPauseState = PlayerState.FALLING_INPUT;
     this.dyingTimer = 0;
     this.state = PlayerState.IDLE;
     // Visual reset: stop whatever roll frame the death animation froze
@@ -506,6 +571,9 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.anims.stop();
     this.setTexture('player_idle');
     this.prevState = PlayerState.IDLE;
+    // Notify PlayScene so it can restore page-level reset-on-death
+    // state (glass walls, keys, key walls).
+    this.emit('respawn');
   }
 
   // ----- Helpers -----
@@ -586,7 +654,6 @@ export class Player extends Phaser.GameObjects.Sprite {
       case PlayerState.FLYING_UP:
       case PlayerState.FLYING_DOWN:
       case PlayerState.JUMPING:
-      case PlayerState.FALLING:
       case PlayerState.FALLING_INPUT:
         target = SHAPE_VMOVE; break;
       default:
