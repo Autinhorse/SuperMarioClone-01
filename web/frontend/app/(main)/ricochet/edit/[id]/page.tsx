@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getLevel } from "@/lib/level";
 import { EditFrame } from "./EditFrame";
+import { EditableTitle } from "./EditableTitle";
+import { PublishToggle } from "./PublishToggle";
 
 type Params = Promise<{ id: string }>;
 
@@ -47,12 +49,14 @@ export default async function EditLevelPage({ params }: { params: Params }) {
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-display font-bold text-2xl truncate">
-              Editing: {level.title}
-            </h1>
-            <span className="px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
-              {level.status === "draft" ? "Draft" : level.status}
-            </span>
+            <EditableTitle levelId={level.id} initialTitle={level.title} />
+            {level.status === "removed" ? (
+              <span className="px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
+                Removed
+              </span>
+            ) : (
+              <PublishToggle levelId={level.id} initialStatus={level.status} />
+            )}
           </div>
           <p className="text-sm text-ink/70">
             Changes save back to your level. Test-plays from inside the
