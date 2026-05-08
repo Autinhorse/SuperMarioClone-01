@@ -17,6 +17,11 @@ Thumbs.db
 # Claude Code local settings
 .claude/
 
+# External project sitting in the worktree but managed independently
+# (its own .git, its own remote — not a submodule, not synced via this
+# repo).
+agent-sprite-forge/
+
 # Export output
 /export/
 /build/
