@@ -261,7 +261,7 @@ export class Player extends Phaser.GameObjects.Sprite {
 
   // ----- State handlers -----
 
-  private idle(_dt: number): void {
+  private idle(dt: number): void {
     // Conveyor push (zero if not standing on a conveyor). x is set EVERY
     // frame so stepping off a conveyor immediately stops the drift.
     // Engine gravity handles y (presses into floor each frame, collider
@@ -270,10 +270,15 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.body.setVelocityX(conveyorDir * this.conveyorSpeed);
 
     if (!this.isOnFloor()) {
-      // Floor vanished from under the player (glass shatter, retracting
-      // timed block, conveyor push past an edge). FALLING_INPUT — every
-      // non-keypress fall accepts input.
+      // No floor under us — most commonly a spawn cell with no wall
+      // below (initial or post-page-transition), but also reached when
+      // a floor vanishes mid-stand (glass shatter, retracting block,
+      // conveyor push past an edge). FALLING_INPUT accepts directional
+      // input; we re-enter it on the SAME frame so the first launch
+      // press from a mid-air spawn isn't swallowed by an idle no-op
+      // followed by a frame of pure gravity.
       this.state = PlayerState.FALLING_INPUT;
+      this.fallingInput(dt);
       return;
     }
 
