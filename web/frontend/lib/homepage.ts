@@ -24,6 +24,9 @@ export type TopCreator = {
 export type HomepageData = {
   stats: HomepageStats;
   featured: FeaturedLevel[];
+  /** Most-recently-published levels regardless of featured flag.
+   *  Same row shape as `featured` so the card UI can be reused. */
+  latest: FeaturedLevel[];
   topCreators: TopCreator[];
 };
 
@@ -51,7 +54,7 @@ type TopCreatorRow = {
 export async function getHomepageData(): Promise<HomepageData> {
   const supabase = await createClient();
 
-  const [statsRes, featuredRes, topRes] = await Promise.all([
+  const [statsRes, featuredRes, latestRes, topRes] = await Promise.all([
     supabase.rpc("homepage_stats"),
     supabase
       .from("levels")
@@ -60,6 +63,14 @@ export async function getHomepageData(): Promise<HomepageData> {
       .select("id, title, like_count, play_count, profiles!levels_creator_id_fkey(username)")
       .eq("status", "published")
       .eq("is_featured", true)
+      .order("published_at", { ascending: false })
+      .limit(5),
+    // "Latest" — every published level, freshest first. Featured-or-not
+    // doesn't matter here; it's the chronological newcomer feed.
+    supabase
+      .from("levels")
+      .select("id, title, like_count, play_count, profiles!levels_creator_id_fkey(username)")
+      .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(5),
     supabase.rpc("top_creators", { limit_count: 3 }),
@@ -75,7 +86,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       }
     : DEFAULT_STATS;
 
-  const featured: FeaturedLevel[] = ((featuredRes.data as FeaturedRow[] | null) ?? []).map((row) => {
+  const mapRow = (row: FeaturedRow): FeaturedLevel => {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return {
       id: row.id,
@@ -84,7 +95,9 @@ export async function getHomepageData(): Promise<HomepageData> {
       likeCount: row.like_count,
       playCount: row.play_count,
     };
-  });
+  };
+  const featured: FeaturedLevel[] = ((featuredRes.data as FeaturedRow[] | null) ?? []).map(mapRow);
+  const latest: FeaturedLevel[] = ((latestRes.data as FeaturedRow[] | null) ?? []).map(mapRow);
 
   const topCreators: TopCreator[] = ((topRes.data as TopCreatorRow[] | null) ?? []).map((row) => ({
     username: row.username,
@@ -92,5 +105,5 @@ export async function getHomepageData(): Promise<HomepageData> {
     levelCount: Number(row.level_count),
   }));
 
-  return { stats, featured, topCreators };
+  return { stats, featured, latest, topCreators };
 }

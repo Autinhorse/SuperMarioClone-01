@@ -2,10 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 const navLinks = [
-  { label: "Play", href: "/play", active: true },
-  { label: "Build", href: "/build" },
   { label: "Explore", href: "/explore" },
-  { label: "Challenges", href: "/challenges" },
   { label: "About", href: "/about" },
 ];
 
@@ -45,9 +42,7 @@ export async function TopNav() {
             <li key={link.label}>
               <Link
                 href={link.href}
-                className={`pb-1 hover:opacity-70 transition ${
-                  link.active ? "border-b-2 border-ink" : ""
-                }`}
+                className="pb-1 hover:opacity-70 transition"
               >
                 {link.label}
               </Link>

@@ -4,38 +4,10 @@ import type { TopCreator } from "@/lib/homepage";
 
 export function InfoRow({ topCreators }: { topCreators: TopCreator[] }) {
   return (
-    <section className="px-6 lg:px-10 mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
-      <WeeklyChallenge />
+    <section className="px-6 lg:px-10 mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
       <YourJourney />
       <TopCreators creators={topCreators} />
     </section>
-  );
-}
-
-function WeeklyChallenge() {
-  return (
-    <article className="bg-brand-purple/30 rounded-3xl border-2 border-ink p-5 shadow-[6px_6px_0_0_var(--color-ink)] flex flex-col">
-      <h3 className="font-display font-bold text-lg mb-3">Weekly Challenge</h3>
-      <div
-        className="aspect-[16/9] rounded-2xl border-2 border-ink bg-brand-sky/40 mb-4 grid place-items-center text-4xl"
-        aria-hidden
-      >
-        ⛰️
-      </div>
-      <div className="flex items-center justify-between gap-3 mt-auto">
-        <p className="text-sm font-semibold">
-          Build a level
-          <br />
-          using only walls.
-        </p>
-        <Link
-          href="/challenges"
-          className="px-4 h-10 rounded-full border-2 border-ink bg-white font-display font-semibold text-sm flex items-center gap-2 shadow-[3px_3px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition shrink-0"
-        >
-          Join Challenge →
-        </Link>
-      </div>
-    </article>
   );
 }
 
