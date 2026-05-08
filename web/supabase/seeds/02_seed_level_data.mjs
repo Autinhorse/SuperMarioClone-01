@@ -1,8 +1,9 @@
-// Dev seed: load the 12 starter level JSONs from
+// Dev seed: load the 10 campaign level JSONs from
 // games/ricochet/public/levels/ into public.levels via service-role key.
 //
-// Levels 01-05 are real designs → published + featured.
-// Levels 06-12 are empty templates → draft (sandbox for editor testing).
+// All 10 levels are published + featured today (single-creator stage).
+// When real users start publishing, narrow `is_featured` to a curated
+// subset so the homepage strip doesn't fill up with first-party work.
 //
 // Re-running upserts metadata/data; play_count, like_count, clear_count
 // are left untouched on conflict (only set on first insert via table defaults).
@@ -79,18 +80,16 @@ if (profileErr || !profile) {
 console.log(`Seeding levels owned by ${profile.username} (${profile.id})`);
 
 const META = {
-  '01': { title: 'Laser Maze',    status: 'published', is_featured: true,  description: 'Bounce through narrow gaps to reach the goal.' },
-  '02': { title: 'Spin & Escape', status: 'published', is_featured: true,  description: 'Dodge the rotating gear and find the exit.' },
-  '03': { title: 'Bouncy Path',   status: 'published', is_featured: true,  description: 'Time your jumps over moving conveyors.' },
-  '04': { title: 'The Last Jump', status: 'published', is_featured: true,  description: 'Make every move count.' },
-  '05': { title: 'Tricky Turn',   status: 'published', is_featured: true,  description: 'A short level with a sting in the tail.' },
-  '06': { title: 'Sandbox 06',    status: 'draft',     is_featured: false, description: null },
-  '07': { title: 'Sandbox 07',    status: 'draft',     is_featured: false, description: null },
-  '08': { title: 'Sandbox 08',    status: 'draft',     is_featured: false, description: null },
-  '09': { title: 'Sandbox 09',    status: 'draft',     is_featured: false, description: null },
-  '10': { title: 'Sandbox 10',    status: 'draft',     is_featured: false, description: null },
-  '11': { title: 'Sandbox 11',    status: 'draft',     is_featured: false, description: null },
-  '12': { title: 'Sandbox 12',    status: 'draft',     is_featured: false, description: null },
+  '01': { title: 'Laser Maze',      status: 'published', is_featured: true, description: 'Bounce through narrow gaps to reach the goal.' },
+  '02': { title: 'Spin & Escape',   status: 'published', is_featured: true, description: 'Dodge the rotating gear and find the exit.' },
+  '03': { title: 'Bouncy Path',     status: 'published', is_featured: true, description: 'Time your jumps over moving conveyors.' },
+  '04': { title: 'The Last Jump',   status: 'published', is_featured: true, description: 'Make every move count.' },
+  '05': { title: 'Tricky Turn',     status: 'published', is_featured: true, description: 'A short level with a sting in the tail.' },
+  '06': { title: 'Belt Driven',     status: 'published', is_featured: true, description: 'Ride the conveyors, mind the spike plates.' },
+  '07': { title: 'Locked Gears',    status: 'published', is_featured: true, description: 'Six keys, four gears, no shortcuts.' },
+  '08': { title: 'Open Fire',       status: 'published', is_featured: true, description: 'First cannons of the campaign — keep moving.' },
+  '09': { title: 'Long Way Home',   status: 'published', is_featured: true, description: 'Five rooms. Every hazard. One way out.' },
+  '10': { title: 'Glass Cathedral', status: 'published', is_featured: true, description: 'Glass everywhere, lasers everywhere. The finale.' },
 };
 
 const now = Date.now();
@@ -124,4 +123,4 @@ if (upsertErr) {
   process.exit(1);
 }
 
-console.log(`Upserted ${rows.length} levels (seed01..seed12).`);
+console.log(`Upserted ${rows.length} levels (seed01..seed${String(rows.length).padStart(2, '0')}).`);
