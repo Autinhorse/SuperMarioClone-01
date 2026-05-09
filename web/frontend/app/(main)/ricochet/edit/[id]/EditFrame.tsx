@@ -2,13 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { usePublishCtx } from "@/components/PublishProvider";
 
 const NS = "ricochet:";
 
 type IncomingMsg =
   | { type: "ricochet:ready"; levelId: string }
   | { type: "ricochet:level-saved"; levelId: string; data: unknown }
-  | { type: "ricochet:exit-edit"; levelId: string };
+  | { type: "ricochet:exit-edit"; levelId: string }
+  | { type: "ricochet:level-cleared"; levelId: string };
 
 // Hosts the embedded Phaser editor. Bridges its postMessage protocol
 // to the platform: pushes the current level data when asked, and on
@@ -18,6 +20,11 @@ type IncomingMsg =
 // Same-origin only — the build is served from /games/ricochet/ on the
 // same domain as this app, so we accept messages whose origin matches
 // window.location.origin and ignore everything else.
+//
+// Also owns the iframe ref for the publish-verify flow: registers an
+// imperative starter with EditCtx so PublishToggle's modal can post
+// `ricochet:start-publish-verify` into the iframe without lifting the
+// ref higher up the tree.
 export function EditFrame({
   levelId,
   levelData,
@@ -27,6 +34,17 @@ export function EditFrame({
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const router = useRouter();
+  const { markDirty, markCleared, registerVerifyStarter } = usePublishCtx();
+
+  useEffect(() => {
+    const unregister = registerVerifyStarter(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: NS + "start-publish-verify", levelId },
+        window.location.origin,
+      );
+    });
+    return unregister;
+  }, [levelId, registerVerifyStarter]);
 
   useEffect(() => {
     function postSaveResult(ok: boolean, error?: string) {
@@ -58,6 +76,25 @@ export function EditFrame({
         return;
       }
 
+      if (data.type === "ricochet:level-cleared") {
+        // Player just cleared the level via a publish-verify run. Stamp
+        // last_cleared_at server-side and flip the gate locally so
+        // PublishToggle can advance from the verify modal to the
+        // confirm-publish step. We don't surface mark-cleared errors —
+        // a failed roundtrip just means the next Publish click re-runs
+        // the test (annoying but safe).
+        try {
+          const res = await fetch(
+            `/api/levels/${encodeURIComponent(levelId)}/mark-cleared`,
+            { method: "POST" },
+          );
+          if (res.ok) markCleared();
+        } catch {
+          // swallow — see comment above.
+        }
+        return;
+      }
+
       if (data.type === "ricochet:level-saved") {
         try {
           const res = await fetch(
@@ -75,6 +112,10 @@ export function EditFrame({
             postSaveResult(false, err.error ?? `HTTP ${res.status}`);
             return;
           }
+          // Save succeeded → server bumped updated_at, so the playtest
+          // gate is now stale (last_cleared_at < updated_at). Reflect
+          // that in local state so PublishToggle re-disables instantly.
+          markDirty();
           postSaveResult(true);
         } catch (err) {
           postSaveResult(false, (err as Error).message);
@@ -85,7 +126,7 @@ export function EditFrame({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [levelId, levelData, router]);
+  }, [levelId, levelData, router, markDirty, markCleared]);
 
   return (
     <iframe

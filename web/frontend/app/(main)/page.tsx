@@ -1,5 +1,4 @@
 import { Hero } from "@/components/Hero";
-import { AvailableGames } from "@/components/AvailableGames";
 import { FeaturedLevels } from "@/components/FeaturedLevels";
 import { LatestLevels } from "@/components/LatestLevels";
 import { InfoRow } from "@/components/InfoRow";
@@ -12,11 +11,10 @@ export default async function Home() {
   return (
     <>
       <Hero />
-      <AvailableGames />
+      <StatsStrip stats={stats} />
       <FeaturedLevels levels={featured} />
       <InfoRow topCreators={topCreators} />
       <LatestLevels levels={latest} />
-      <StatsStrip stats={stats} />
     </>
   );
 }

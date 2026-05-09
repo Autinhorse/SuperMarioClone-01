@@ -49,31 +49,22 @@ export function Hero() {
           ⭐
         </div>
 
-        <div className="aspect-video rounded-2xl border-2 border-ink bg-[#cdb4f0] grid place-items-center relative overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-40"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, rgba(26,27,46,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(26,27,46,0.15) 1px, transparent 1px)",
-              backgroundSize: "32px 32px",
-            }}
+        <div className="aspect-video rounded-2xl border-2 border-ink bg-ink overflow-hidden">
+          {/* Muted autoplay loop — browser autoplay policy blocks
+              videos with sound, and ambient muted gameplay reads as a
+              "live screenshot" without demanding interaction. The
+              visitor can click "Play Ricochet" below to actually try
+              the game. playsInline keeps it inline on iOS instead of
+              hijacking fullscreen. */}
+          <video
+            src="/videos/Ricochet-Build-Share-Play.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-contain"
+            aria-label="Ricochet gameplay preview"
           />
-          <button
-            type="button"
-            aria-label="Play video"
-            className="relative size-16 rounded-full border-2 border-ink bg-white grid place-items-center text-2xl hover:scale-105 transition"
-          >
-            ▶
-          </button>
-          <div className="absolute bottom-3 left-3 right-3 flex items-center gap-3 px-3 py-2 rounded-full bg-white/80 border border-ink/30 text-xs font-medium">
-            <span>▶</span>
-            <div className="flex-1 h-1 rounded-full bg-ink/20 relative">
-              <div className="absolute left-0 top-0 h-full w-0 bg-ink rounded-full" />
-            </div>
-            <span>0:00 / 0:15</span>
-            <span>🔊</span>
-            <span>⛶</span>
-          </div>
         </div>
       </div>
     </section>

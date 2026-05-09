@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePublishCtxOptional } from "@/components/PublishProvider";
 
 const NS = "ricochet:";
 
@@ -16,14 +17,23 @@ type IncomingMsg =
 // Same-origin only — the game build is served from /games/ricochet/ on
 // the same domain as this app, so we accept messages whose origin
 // matches window.location.origin and ignore everything else.
+//
+// When the viewer is the level's creator (`isOwner`), a successful
+// natural play-through also satisfies the publish-verify gate. We POST
+// mark-cleared in addition to the public /clear counter, and flip the
+// shared PublishCtx so the PublishToggle in the header can advance to
+// "Test passed ✓ Publish?" without a refresh.
 export function GameFrame({
   levelId,
   levelData,
+  isOwner,
 }: {
   levelId: string;
   levelData: unknown;
+  isOwner: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const publishCtx = usePublishCtxOptional();
 
   useEffect(() => {
     function handleMessage(ev: MessageEvent) {
@@ -48,13 +58,25 @@ export function GameFrame({
 
       if (data.type === "ricochet:level-completed") {
         void fetch(`/api/levels/${encodeURIComponent(levelId)}/clear`, { method: "POST" });
+        // Owner-only: satisfy the publish gate too. The mark-cleared
+        // endpoint is creator-scoped via RLS, so a non-owner POST
+        // would noop anyway — we just skip the request to keep play
+        // pages quiet for everyone else.
+        if (isOwner) {
+          void fetch(
+            `/api/levels/${encodeURIComponent(levelId)}/mark-cleared`,
+            { method: "POST" },
+          ).then((res) => {
+            if (res.ok) publishCtx?.markCleared();
+          });
+        }
         return;
       }
     }
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [levelId, levelData]);
+  }, [levelId, levelData, isOwner, publishCtx]);
 
   return (
     <iframe

@@ -202,6 +202,14 @@ export class PlayScene extends Phaser.Scene {
   // postMessage protocol — see src/embed.ts. Persists across restarts
   // (death-replay, cross-page, completion-replay).
   private embedLevelId: string | null = null;
+  // Publish-verify mode: full-level playthrough launched by the host
+  // page's PublishToggle when the level needs a fresh clear before it
+  // can be published. Differs from a normal `launchedFromEditor` test
+  // play in two ways: it always starts at page 0 (the level's spawn),
+  // and on reaching the exit it posts `level-cleared` to the host so
+  // the playtest gate can be unlocked. Persists across cross-page
+  // restarts the same way the other init flags do.
+  private publishVerify = false;
   // Black overlay for transition fade-out / fade-in. Pinned to the
   // camera (scrollFactor 0) so it covers the whole viewport regardless
   // of the centered-room camera scroll.
@@ -228,6 +236,7 @@ export class PlayScene extends Phaser.Scene {
     editorDirty?: boolean;
     campaignLevel?: number;
     embedLevelId?: string;
+    publishVerify?: boolean;
   }): void {
     this.startPageIndex = data?.pageIndex ?? DEFAULT_PAGE_INDEX;
     this.shouldFadeIn = data?.fadeIn ?? false;
@@ -239,6 +248,7 @@ export class PlayScene extends Phaser.Scene {
     this.editorDirty = data?.editorDirty ?? false;
     this.campaignLevel = data?.campaignLevel ?? 0;
     this.embedLevelId = data?.embedLevelId ?? null;
+    this.publishVerify = data?.publishVerify ?? false;
   }
 
   preload(): void {
@@ -1499,6 +1509,10 @@ export class PlayScene extends Phaser.Scene {
   // the exit page (so the user can keep iterating). Standalone runs fade
   // to a "LEVEL COMPLETE" screen with a click-to-restart prompt — a
   // proper end-of-level UX is a future phase.
+  //
+  // Publish-verify runs: same return-to-editor path as a normal editor
+  // test play, plus a one-shot `level-cleared` postMessage to the host
+  // so the platform's playtest gate can mark the level cleared.
   private handleExit(): void {
     if (this.transitioning) return;
     this.transitioning = true;
@@ -1508,6 +1522,9 @@ export class PlayScene extends Phaser.Scene {
       alpha: 1,
       duration: FADE_DURATION_MS,
       onComplete: () => {
+        if (this.publishVerify && this.embedLevelId) {
+          postToParent('level-cleared', { levelId: this.embedLevelId });
+        }
         if (this.launchedFromEditor) {
           this.scene.start('EditScene', {
             level: this.providedLevel ?? this.loadedLevel,
@@ -1666,6 +1683,7 @@ export class PlayScene extends Phaser.Scene {
           editorDirty?: boolean;
           campaignLevel?: number;
           embedLevelId?: string;
+          publishVerify?: boolean;
         } = { pageIndex: targetPage, fadeIn: true };
         if (this.providedLevel) restartData.level = this.providedLevel;
         if (this.launchedFromEditor) restartData.fromEditor = true;
@@ -1673,6 +1691,7 @@ export class PlayScene extends Phaser.Scene {
         if (this.editorDirty) restartData.editorDirty = this.editorDirty;
         if (this.campaignLevel) restartData.campaignLevel = this.campaignLevel;
         if (this.embedLevelId) restartData.embedLevelId = this.embedLevelId;
+        if (this.publishVerify) restartData.publishVerify = true;
         this.scene.restart(restartData);
       },
     });

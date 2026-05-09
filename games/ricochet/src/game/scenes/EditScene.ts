@@ -218,6 +218,11 @@ export class EditScene extends Phaser.Scene {
   // (the host page calls Supabase). Persists across Play → Edit
   // round-trips so save still routes through the host afterward.
   private embedLevelId: string | null = null;
+  // Bound message handler for `ricochet:start-publish-verify` from the
+  // host page. Stored as a field so SHUTDOWN/DESTROY can remove it
+  // (re-entering the editor from PlayScene would otherwise stack
+  // multiple listeners and double-fire on the next verify request).
+  private publishVerifyListener: ((ev: MessageEvent) => void) | null = null;
 
   constructor() {
     super('EditScene');
@@ -328,15 +333,62 @@ export class EditScene extends Phaser.Scene {
       this.onPointerUp(p),
     );
 
+    // Listen for the host page's request to start a full-level
+    // playthrough for publish verification. Triggered by the platform's
+    // PublishToggle when last_cleared_at is NULL (gate stale).
+    // Same-origin only (the iframe is served from /games/ricochet/ on
+    // the same domain). Ignored when not running embedded.
+    if (this.embedLevelId) {
+      const expectedId = this.embedLevelId;
+      this.publishVerifyListener = (ev: MessageEvent) => {
+        if (ev.origin !== window.location.origin) return;
+        const msg = ev.data as { type?: string; levelId?: string } | null;
+        if (!msg || typeof msg !== 'object') return;
+        if (msg.type !== 'ricochet:start-publish-verify') return;
+        if (msg.levelId !== expectedId) return;
+        // Auto-save first when the editor is dirty — the published
+        // version must match what was actually tested. Without this, a
+        // user with unsaved edits would verify against the in-memory
+        // level but publish the older on-disk one. saveLevel() shows
+        // an alert and returns false on failure, so we just abort.
+        void (async () => {
+          if (this.dirty) {
+            const ok = await this.saveLevel();
+            if (!ok) return;
+          }
+          // Force start at page 0 (level spawn). `fromEditor: true`
+          // keeps the in-game ◀ Edit button so the user can abort, and
+          // routes the post-clear hand-off back to EditScene like any
+          // other editor test play.
+          this.scene.start('PlayScene', {
+            level: this.level,
+            pageIndex: 0,
+            fromEditor: true,
+            publishVerify: true,
+            embedLevelId: expectedId,
+          });
+        })();
+      };
+      window.addEventListener('message', this.publishVerifyListener);
+    }
+
     // Tear down DOM palette on scene exit so it doesn't linger over
     // PlayScene (or persist after a hot reload).
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cancelDrag();
       this.destroyPalette();
+      if (this.publishVerifyListener) {
+        window.removeEventListener('message', this.publishVerifyListener);
+        this.publishVerifyListener = null;
+      }
     });
     this.events.once(Phaser.Scenes.Events.DESTROY, () => {
       this.cancelDrag();
       this.destroyPalette();
+      if (this.publishVerifyListener) {
+        window.removeEventListener('message', this.publishVerifyListener);
+        this.publishVerifyListener = null;
+      }
     });
   }
 

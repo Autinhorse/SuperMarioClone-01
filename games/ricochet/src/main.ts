@@ -89,6 +89,23 @@ async function boot() {
 
   const params = new URLSearchParams(window.location.search);
   const mode = params.get('mode');
+
+  // ?campaign=N — skip MenuScene and drop the player straight into the
+  // Nth campaign level. Used by the website's /ricochet hub page so a
+  // first-time visitor lands on Level 1 without picking from a grid.
+  // PlayScene's own next-level / finale handling carries them through
+  // levels 2..10 and the "Congratulations" screen at the end.
+  const campaignParam = params.get('campaign');
+  const campaignLevel = campaignParam ? parseInt(campaignParam, 10) : 0;
+  if (Number.isFinite(campaignLevel) && campaignLevel >= 1 && campaignLevel <= 10) {
+    const game = new Phaser.Game({ ...baseConfig, scene: [] });
+    game.scene.add('PlayScene', PlayScene);
+    game.scene.add('MenuScene', MenuScene);
+    game.scene.add('EditScene', EditScene);
+    game.scene.start('PlayScene', { campaignLevel });
+    return;
+  }
+
   const startWithEditor = mode === 'edit';
   const startWithPlay = mode === 'play';
 

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { formatCount } from "@/lib/format";
 import { getAllPublishedLevels } from "@/lib/explore";
-
-const TINTS = ["#7BB6E8", "#F4B6B6", "#F5D77A", "#A5D6A7", "#CDB4F0"];
+import { LevelThumbnail } from "@/components/LevelThumbnail";
+import { RatingDisplay } from "@/components/RatingWidget";
 
 export const metadata = {
   title: "Explore Levels — LevelCraft",
@@ -39,21 +39,17 @@ export default async function ExplorePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {levels.map((level, i) => (
-            <Link
+          {levels.map((level) => (
+            <article
               key={level.id}
-              href={`/ricochet/play/${level.id}`}
-              className="rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition block"
+              className="relative rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"
             >
-              <div
-                className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden"
-                style={{
-                  backgroundColor: TINTS[i % TINTS.length],
-                  backgroundImage:
-                    "linear-gradient(to right, rgba(26,27,46,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(26,27,46,0.15) 1px, transparent 1px)",
-                  backgroundSize: "16px 16px",
-                }}
-              >
+              <div className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden bg-paper">
+                <LevelThumbnail
+                  thumbnailUrl={level.thumbnailUrl}
+                  previewPage={level.previewPage}
+                  alt={level.title}
+                />
                 <button
                   type="button"
                   aria-label={`Preview ${level.title}`}
@@ -65,18 +61,37 @@ export default async function ExplorePage() {
               <div className="px-1 pt-3 pb-1">
                 <h3 className="font-display font-bold text-base truncate">{level.title}</h3>
                 <p className="text-xs text-ink/60 truncate">
-                  by {level.creatorUsername ?? "(unknown)"}
+                  by{" "}
+                  {level.creatorUsername ? (
+                    <Link
+                      href={`/u/${level.creatorUsername}`}
+                      className="relative z-10 font-semibold hover:underline"
+                    >
+                      {level.creatorUsername}
+                    </Link>
+                  ) : (
+                    "(unknown)"
+                  )}
                 </p>
-                <div className="flex items-center gap-3 mt-2 text-xs font-semibold">
+                <div className="flex items-center gap-3 mt-2 text-xs font-semibold flex-wrap">
                   <span className="flex items-center gap-1">
                     <span className="text-brand-coral">♥</span> {formatCount(level.likeCount)}
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="text-brand-green">▶</span> {formatCount(level.playCount)}
                   </span>
+                  <RatingDisplay
+                    ratingSum={level.ratingSum}
+                    ratingCount={level.ratingCount}
+                  />
                 </div>
               </div>
-            </Link>
+              <Link
+                href={`/ricochet/play/${level.id}`}
+                aria-label={level.title}
+                className="absolute inset-0 rounded-2xl"
+              />
+            </article>
           ))}
         </div>
       )}

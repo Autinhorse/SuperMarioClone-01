@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getLevel } from "@/lib/level";
+import { getLevel, type LevelDetail } from "@/lib/level";
 import { formatCount } from "@/lib/format";
+import { PublishProvider } from "@/components/PublishProvider";
+import { PublishToggle } from "../../edit/[id]/PublishToggle";
 import { GameFrame } from "./GameFrame";
+import { ContextualBackButton } from "@/components/ContextualBackButton";
+import { RatingWidget } from "@/components/RatingWidget";
 
 type Params = Promise<{ id: string }>;
 
@@ -29,29 +33,65 @@ export default async function PlayLevelPage({ params }: { params: Params }) {
     data: { user },
   } = await supabase.auth.getUser();
   const isOwner = user?.id === level.creatorId;
-  const isDraft = level.status === "draft";
+  const viewerSignedIn = !!user;
 
-  const hasContent = level.data && typeof level.data === "object" && !Array.isArray(level.data) && "pages" in (level.data as Record<string, unknown>);
+  const body = (
+    <PlayBody
+      level={level}
+      isOwner={isOwner}
+      viewerSignedIn={viewerSignedIn}
+    />
+  );
+  // Owners get the shared PublishCtx so the header's PublishToggle can
+  // react to natural-play clears posted by GameFrame. Non-owners skip
+  // the provider entirely — they can neither toggle nor verify.
+  if (isOwner && level.status !== "removed") {
+    return (
+      <PublishProvider
+        initialStatus={level.status}
+        initialNeedsPlaytest={level.needsPlaytest}
+      >
+        {body}
+      </PublishProvider>
+    );
+  }
+  return body;
+}
+
+function PlayBody({
+  level,
+  isOwner,
+  viewerSignedIn,
+}: {
+  level: LevelDetail;
+  isOwner: boolean;
+  viewerSignedIn: boolean;
+}) {
+  const isDraft = level.status === "draft";
+  const hasContent =
+    level.data &&
+    typeof level.data === "object" &&
+    !Array.isArray(level.data) &&
+    "pages" in (level.data as Record<string, unknown>);
 
   return (
     <div className="px-6 lg:px-10 mt-6 space-y-4">
       {/* Header card */}
       <header className="rounded-3xl border-2 border-ink bg-white p-5 shadow-[6px_6px_0_0_var(--color-ink)] flex flex-col sm:flex-row sm:items-center gap-4">
-        <Link
-          href="/explore"
-          className="size-10 shrink-0 rounded-full border-2 border-ink bg-paper grid place-items-center hover:-translate-y-0.5 transition"
-          aria-label="Back to browse"
-        >
-          ←
-        </Link>
+        <ContextualBackButton fallbackHref="/explore" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="font-display font-bold text-2xl truncate">{level.title}</h1>
-            {isDraft && (
+            {/* Owners see the live PublishToggle (handles draft + published states).
+                Non-owners viewing a draft would never reach this page (RLS hides),
+                but defensively render a static Draft badge if they somehow do. */}
+            {isOwner && level.status !== "removed" ? (
+              <PublishToggle levelId={level.id} />
+            ) : isDraft ? (
               <span className="px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
                 Draft
               </span>
-            )}
+            ) : null}
           </div>
           <p className="text-sm text-ink/70">
             by{" "}
@@ -64,7 +104,7 @@ export default async function PlayLevelPage({ params }: { params: Params }) {
             )}
             {level.description && <span className="text-ink/60"> · {level.description}</span>}
           </p>
-          <div className="flex items-center gap-4 mt-2 text-sm font-semibold">
+          <div className="flex items-center gap-4 mt-2 text-sm font-semibold flex-wrap">
             <span className="flex items-center gap-1">
               <span className="text-brand-coral">♥</span> {formatCount(level.likeCount)}
             </span>
@@ -73,6 +113,21 @@ export default async function PlayLevelPage({ params }: { params: Params }) {
             </span>
             <code className="text-xs text-ink/60 font-mono">#{level.id}</code>
           </div>
+          {/* Rating row. Only meaningful for published levels — drafts
+              wouldn't have public ratings anyway, and the API rejects
+              rates against drafts. */}
+          {level.status === "published" && (
+            <div className="mt-3">
+              <RatingWidget
+                levelId={level.id}
+                initialRatingSum={level.ratingSum}
+                initialRatingCount={level.ratingCount}
+                initialViewerRating={level.viewerRating}
+                viewerSignedIn={viewerSignedIn}
+                isOwner={isOwner}
+              />
+            </div>
+          )}
         </div>
         {isOwner && (
           <Link
@@ -88,7 +143,11 @@ export default async function PlayLevelPage({ params }: { params: Params }) {
       <section className="rounded-3xl border-2 border-ink bg-ink p-2 shadow-[6px_6px_0_0_var(--color-ink)]">
         <div className="aspect-[5/3] w-full rounded-2xl bg-[#22252c] overflow-hidden grid place-items-center text-paper">
           {hasContent ? (
-            <GameFrame levelId={level.id} levelData={level.data} />
+            <GameFrame
+              levelId={level.id}
+              levelData={level.data}
+              isOwner={isOwner}
+            />
           ) : (
             <Placeholder />
           )}

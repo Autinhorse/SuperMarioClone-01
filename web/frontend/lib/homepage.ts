@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { extractPreviewPage, type PreviewPage } from "@/lib/level-preview";
 
 export type HomepageStats = {
   levelsCount: number;
@@ -13,6 +14,19 @@ export type FeaturedLevel = {
   creatorUsername: string | null;
   likeCount: number;
   playCount: number;
+  /** Denormalized rating aggregates (sum + count). Average is sum/count
+   *  when count > 0; cards hide the rating row entirely when count=0
+   *  so a brand-new level doesn't show "0.0 / 5". */
+  ratingSum: number;
+  ratingCount: number;
+  /** Page-0 slice of `levels.data`. Used as the SVG thumbnail fallback
+   *  when thumbnailUrl is null (drafts, or rows from before the PNG
+   *  pipeline shipped). null = malformed level → empty texture. */
+  previewPage: PreviewPage | null;
+  /** Public URL of the rendered PNG thumbnail, written by the publish
+   *  API on each draft→published transition. null = no PNG yet, fall
+   *  back to the inline SVG. */
+  thumbnailUrl: string | null;
 };
 
 export type TopCreator = {
@@ -42,6 +56,10 @@ type FeaturedRow = {
   title: string;
   like_count: number;
   play_count: number;
+  rating_sum: number;
+  rating_count: number;
+  data: unknown;
+  thumbnail_url: string | null;
   profiles: { username: string } | { username: string }[] | null;
 };
 
@@ -60,8 +78,12 @@ export async function getHomepageData(): Promise<HomepageData> {
       .from("levels")
       // Explicit FK name disambiguates the join — there are two paths from
       // levels to profiles (direct creator FK + m2m via likes).
-      .select("id, title, like_count, play_count, profiles!levels_creator_id_fkey(username)")
+      // `parent_id is null` is redundant given the forks_must_be_draft
+      // CHECK + status filter, but spelled out so a reader doesn't have
+      // to chase the constraint to know forks are excluded.
+      .select("id, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
       .eq("status", "published")
+      .is("parent_id", null)
       .eq("is_featured", true)
       .order("published_at", { ascending: false })
       .limit(5),
@@ -69,12 +91,25 @@ export async function getHomepageData(): Promise<HomepageData> {
     // doesn't matter here; it's the chronological newcomer feed.
     supabase
       .from("levels")
-      .select("id, title, like_count, play_count, profiles!levels_creator_id_fkey(username)")
+      .select("id, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
       .eq("status", "published")
+      .is("parent_id", null)
       .order("published_at", { ascending: false })
       .limit(5),
     supabase.rpc("top_creators", { limit_count: 3 }),
   ]);
+
+  // Surface query errors to the dev log — without this they're swallowed
+  // and the four lists silently come back empty (e.g. a missing column
+  // makes the whole select fail, which looks identical to "no levels").
+  for (const [name, res] of [
+    ["homepage_stats", statsRes],
+    ["featured", featuredRes],
+    ["latest", latestRes],
+    ["top_creators", topRes],
+  ] as const) {
+    if (res.error) console.error(`[homepage ${name}]`, res.error.message);
+  }
 
   const statsData = statsRes.data as Record<string, number> | null;
   const stats: HomepageStats = statsData
@@ -94,6 +129,10 @@ export async function getHomepageData(): Promise<HomepageData> {
       creatorUsername: profile?.username ?? null,
       likeCount: row.like_count,
       playCount: row.play_count,
+      ratingSum: row.rating_sum,
+      ratingCount: row.rating_count,
+      previewPage: extractPreviewPage(row.data),
+      thumbnailUrl: row.thumbnail_url,
     };
   };
   const featured: FeaturedLevel[] = ((featuredRes.data as FeaturedRow[] | null) ?? []).map(mapRow);

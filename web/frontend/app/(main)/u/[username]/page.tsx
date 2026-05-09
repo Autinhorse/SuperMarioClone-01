@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, getProfileLevels, type ProfileLevel } from "@/lib/profile";
 import { formatCount, formatJoinDate } from "@/lib/format";
-
-const TINTS = ["#7BB6E8", "#F4B6B6", "#F5D77A", "#A5D6A7", "#CDB4F0"];
+import { LevelThumbnail } from "@/components/LevelThumbnail";
+import { RatingDisplay } from "@/components/RatingWidget";
+import { DeleteLevelButton } from "@/components/DeleteLevelButton";
 
 type Params = Promise<{ username: string }>;
 
@@ -71,7 +72,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
         {published.length === 0 ? (
           <EmptyState owner={isOwner} />
         ) : (
-          <LevelGrid levels={published} />
+          <LevelGrid levels={published} showDelete={isOwner} />
         )}
       </section>
 
@@ -85,7 +86,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
           <p className="text-sm text-ink/60 mb-4">
             Only you can see these. Publish a draft and it&apos;ll move up to your published list.
           </p>
-          <LevelGrid levels={drafts} showDraftBadge />
+          <LevelGrid levels={drafts} showDraftBadge showDelete />
         </section>
       )}
     </div>
@@ -115,54 +116,80 @@ function Stat({
 function LevelGrid({
   levels,
   showDraftBadge = false,
+  showDelete = false,
 }: {
   levels: ProfileLevel[];
   showDraftBadge?: boolean;
+  showDelete?: boolean;
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {levels.map((level, i) => (
+      {levels.map((level) => (
         <Link
           key={level.id}
-          href={`/ricochet/play/${level.id}`}
+          // Drafts (only shown to the owner) go straight to the editor
+          // — the play page would just be an extra click before the
+          // owner reaches the only useful action they have for an
+          // unpublished level. Published levels keep the play landing.
+          href={
+            showDraftBadge
+              ? `/ricochet/edit/${level.id}`
+              : `/ricochet/play/${level.id}`
+          }
           className="rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition block relative"
         >
-          {showDraftBadge && (
+          {/* Top-left badge: Draft / Edit (drafts only) or featured star
+              (published+featured). Mutually exclusive — drafts can't be
+              featured. Top-right is reserved for the delete button when
+              the viewer owns the level. Forks show "Edit" instead of
+              "Draft" so they're visually distinguishable from fresh
+              drafts (both share the same title text). */}
+          {showDraftBadge ? (
             <span className="absolute top-1 left-1 z-10 px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
-              Draft
+              {level.parentId ? "Edit" : "Draft"}
             </span>
-          )}
-          {level.isFeatured && !showDraftBadge && (
-            <span className="absolute top-1 right-1 z-10 size-7 rounded-full border-2 border-ink bg-brand-yellow grid place-items-center text-sm">
+          ) : level.isFeatured ? (
+            <span className="absolute top-1 left-1 z-10 size-11 rounded-full border-2 border-ink bg-brand-yellow grid place-items-center text-base">
               ⭐
             </span>
+          ) : null}
+          {showDelete && (
+            <DeleteLevelButton levelId={level.id} levelTitle={level.title} />
           )}
-          <div
-            className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden"
-            style={{
-              backgroundColor: TINTS[i % TINTS.length],
-              backgroundImage:
-                "linear-gradient(to right, rgba(26,27,46,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(26,27,46,0.15) 1px, transparent 1px)",
-              backgroundSize: "16px 16px",
-            }}
-          >
+          <div className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden bg-paper">
+            <LevelThumbnail
+              thumbnailUrl={level.thumbnailUrl}
+              previewPage={level.previewPage}
+              alt={level.title}
+            />
             <button
               type="button"
-              aria-label={`Preview ${level.title}`}
+              aria-label={
+                showDraftBadge ? `Edit ${level.title}` : `Preview ${level.title}`
+              }
               className="absolute bottom-2 right-2 size-9 rounded-full border-2 border-ink bg-white grid place-items-center text-sm"
             >
-              ▶
+              {showDraftBadge ? "✏️" : "▶"}
             </button>
           </div>
           <div className="px-1 pt-3 pb-1">
             <h3 className="font-display font-bold text-base truncate">{level.title}</h3>
-            <div className="flex items-center gap-3 mt-1 text-xs font-semibold">
+            {level.parentId && level.parentTitle && (
+              <p className="text-[11px] text-ink/60 truncate">
+                editing live version
+              </p>
+            )}
+            <div className="flex items-center gap-3 mt-1 text-xs font-semibold flex-wrap">
               <span className="flex items-center gap-1">
                 <span className="text-brand-coral">♥</span> {formatCount(level.likeCount)}
               </span>
               <span className="flex items-center gap-1">
                 <span className="text-brand-green">▶</span> {formatCount(level.playCount)}
               </span>
+              <RatingDisplay
+                ratingSum={level.ratingSum}
+                ratingCount={level.ratingCount}
+              />
             </div>
           </div>
         </Link>
