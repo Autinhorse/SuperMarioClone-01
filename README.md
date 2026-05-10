@@ -69,26 +69,155 @@ Wish me luck.
 📺 Discord Server: https://discord.gg/prAuYMsBvc
 
 ---
-Summary of Results: 11 days—and the website is live now. It includes the site itself, the game, and a level editor—all built with zero lines of handwritten code. You can check out the results for yourselves at Levelcraft.gg.
+### Summary of Results:###  11 days—and the website is live now. It includes the site itself, the game, and a level editor—all built with zero lines of handwritten code. You can check out the results for yourselves at Levelcraft.gg.
 
-The "Zero-Code" Reality
+### The "Zero-Code" Reality
 The entire project was built in VS Code using Claude Code for architecture and logic, and Codex for sprite generation. The site runs on Vercel and Supabase.
 
 I started with Godot, but following Claude’s advice, I migrated to Phaser. Despite having Unity experience, my knowledge of both these engines was—and still is—zero. I haven’t handwritten a single line of code. Claude architected the system, suggested a 13-step migration plan when we switched engines, and guided me through every integration.
 
-Reflections on the Future
-What used to take an experienced developer 3 to 6 months can now be achieved in weeks through AI guidance.
+### Development Process
 
-The old paradigm—where a domain expert explains requirements to a developer, who then implements and tests—is collapsing. If the expert can talk directly to the AI, the efficiency becomes terrifying. We are reaching a point where the "developer" as a middleman may no longer be necessary. (A realization that makes this old coder both weep and wonder!)
+For the programming side, I genuinely believe that a reasonably experienced developer’s workload — something that might traditionally take 3–6 months — can now often be completed in just a few weeks with AI guidance, as long as the technology involved is not extremely specialized.
 
-However, experience still matters. When my character got stuck jumping against walls, my intuition told me it was a collision box issue. I didn't need to code the fix; I just needed to tell the AI: "Shrink the collision box by a few pixels and add a slight bounce-back." Experience is now about knowing what to tell the AI, not how to syntax it.
+What’s even more interesting is how AI changes the entire development workflow itself.
 
-The Path Ahead
-AI can help us work, but it cannot help us think. It accelerates the realization of an idea, but the "Big Idea" remains human.
+Traditionally, an industry expert would first explain requirements to a developer.
+The developer would then implement the feature, hand it back, receive feedback, try to understand the issues, revise it again, test again… and repeat this cycle endlessly.
 
-LevelCraft has proven that the technical barriers to "Super Mario Maker" are gone. My next challenge? A project I’ve sat on for 10 years: a Sudoku masterclass game that teaches complex logic step-by-step. No fancy art—just pure, complex programmatic logic to see exactly where the ceiling of AI truly lies.
+But if the domain expert can directly communicate with AI, instantly see results, and iteratively refine them through conversation, the efficiency increase is enormous.
 
-Game By Talk Only. The experiment continues.
+At that point, many traditional programming roles begin to disappear.
+(Old-school programmers like me may need a moment to recover from that realization.)
+
+That said, experience still matters.
+
+Some issues are difficult to diagnose if you’ve never built similar games before.
+
+For example, in my platformer, when the player jumped upward while sliding against a wall, they would sometimes get blocked by what visually appeared to be a perfectly vertical surface — and sometimes they wouldn’t.
+
+Based on experience, I immediately suspected the problem:
+both the player and the walls were using square collision boxes, and tiny floating-point inaccuracies were causing inconsistent collision detection.
+
+So instead of trying to “fix the bug” directly, I instructed the AI to slightly separate the player from walls during rebounds, and also keep horizontal movement slightly above the ground. That completely avoided the issue.
+
+Another example: sometimes the player could not fall through a one-tile-wide gap in the floor.
+
+Again, the cause was obvious to me from past experience:
+the square collision box was too wide.
+
+I told the AI to shrink the player’s collision box horizontally by a few pixels, and the problem disappeared instantly.
+
+These are all lessons learned from years of developing similar games.
+
+Because I’m also working on several other major projects, these 11 days were not spent full-time on this game. Realistically, I probably dedicated around half my time to it.
+
+Of course, “programmer half-time” is not exactly a normal 8-hour workday.
+
+A surprisingly large amount of time was actually spent generating art assets.
+
+Even using what is supposedly one of the most advanced coding agents available today — Codex — image generation still required significant manual Photoshop work:
+
+cropping
+alignment
+cleanup
+consistency adjustments
+
+AI-generated art also tends to drift away from the intended visual style over time.
+
+Quite often I had to tell it:
+
+“Use this image as a style reference.”
+
+Only then could it pull the visuals back into the correct direction.
+
+Scene generation and environmental elements worked surprisingly well.
+
+But animated assets involving multiple perspectives were much more problematic.
+
+For example, I originally asked the AI to generate an 8-frame spinning energy bottle animation rotating around a vertical axis.
+
+Out of the 8 frames, there would always be one or two incorrect angles.
+I spent over an hour trying to fix it through prompting alone and still couldn’t get a fully consistent result.
+
+Eventually, I gave up and replaced it with a glowing animation instead.
+
+Another manually finished asset was the conveyor belt animation.
+
+The conveyor belt required three seamlessly connectable pieces:
+
+left end
+middle segment
+right end
+
+The AI-generated images simply would not align correctly.
+
+In the end, I kept the outer frame generated by AI and manually drew the moving arrows myself.
+
+(The result honestly looks terrible. Please forgive my amateur-level art skills.)
+
+Maybe part of the problem is that I’m not a professional artist and haven’t deeply studied AI image workflows yet.
+
+I genuinely hope artists will explore this area further.
+
+Ideally, I’d love to hear:
+
+“Art can already be fully AI-generated — programming is the harder part.”
+
+Then maybe artists and programmers can finally switch places for once.
+
+The entire website was also generated entirely through AI, including all visual design work.
+
+I simply provided a reference image and told the AI:
+
+“I want the website to look like this.
+My platform is about XXXX.
+It needs XXXXX features.”
+
+And it generated the initial version.
+
+From there, the process became iterative conversations refining individual features one by one.
+
+Zero handwritten code.
+
+I used the Claude Max Plan throughout this experiment.
+
+At one point I completely exhausted my token limit — specifically during the migration from Godot to Phaser.
+
+That process required the AI to continuously read old code and generate entirely new codebases, so the workload was extremely heavy.
+
+For normal development intensity, though, the plan was generally sufficient.
+
+There were also several complex modifications where the AI would run for very long periods of time.
+
+The longest single run took around 25 minutes.
+Runs close to 20 minutes happened almost daily.
+
+Fortunately, the system continuously displayed what the AI was currently doing, so it still felt manageable.
+
+It also gave me plenty of time to scroll on my phone.
+
+### Important Conclusion
+
+After this experiment, my conclusion is simple:
+
+For games of this scale, programming can already be almost entirely replaced by AI.
+
+Art is still weaker — or perhaps more accurately, it still has limitations that developers must work around.
+
+But on the programming side, achieving a true “100% zero-code workflow” already feels possible.
+
+The art assets generated by AI are currently “usable,” but still far from truly polished or production-quality.
+
+Of course, much larger and more complex games may still encounter major technical limitations.
+
+But games have always been driven primarily by ideas.
+
+And now, with AI, great ideas are no longer bottlenecked by a lack of programmers or artists.
+
+AI can rapidly transform ideas into playable reality.
+
+### Game By Talk Only. The experiment continues.
 
 
 ### 📅 Ricochet Development Logs
