@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-const navLinks = [
+const navLinks: { label: string; href: string; external?: boolean }[] = [
   { label: "Explore", href: "/explore" },
   { label: "About", href: "/about" },
+  { label: "Discord", href: "https://discord.gg/prAuYMsBvc", external: true },
 ];
 
 export async function TopNav() {
@@ -40,12 +41,23 @@ export async function TopNav() {
         <ul className="hidden md:flex items-center gap-8 font-display font-medium text-base">
           {navLinks.map((link) => (
             <li key={link.label}>
-              <Link
-                href={link.href}
-                className="pb-1 hover:opacity-70 transition"
-              >
-                {link.label}
-              </Link>
+              {link.external ? (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pb-1 hover:opacity-70 transition"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  href={link.href}
+                  className="pb-1 hover:opacity-70 transition"
+                >
+                  {link.label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

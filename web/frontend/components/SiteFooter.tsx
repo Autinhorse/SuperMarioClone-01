@@ -1,10 +1,8 @@
 import Link from "next/link";
 
-const footerLinks = [
+const footerLinks: { label: string; href: string; external?: boolean }[] = [
   { label: "About", href: "/about" },
-  { label: "Blog", href: "/blog" },
-  { label: "Discord", href: "/discord" },
-  { label: "Twitter", href: "/twitter" },
+  { label: "Discord", href: "https://discord.gg/prAuYMsBvc", external: true },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
 ];
@@ -23,9 +21,20 @@ export function SiteFooter() {
         <ul className="flex flex-wrap items-center gap-5 text-sm font-semibold">
           {footerLinks.map((l) => (
             <li key={l.label}>
-              <Link href={l.href} className="hover:underline">
-                {l.label}
-              </Link>
+              {l.external ? (
+                <a
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link href={l.href} className="hover:underline">
+                  {l.label}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

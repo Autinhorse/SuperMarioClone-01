@@ -20,6 +20,9 @@ export async function POST(request: NextRequest) {
   if (!email || !password || !username) {
     return back(origin, "All fields are required.");
   }
+  if (!formData.get("agree")) {
+    return back(origin, "You must agree to the Terms of Service and Privacy Policy.");
+  }
   if (!USERNAME_PATTERN.test(username)) {
     return back(origin, "Username must be 3–20 letters, numbers, or underscores.");
   }

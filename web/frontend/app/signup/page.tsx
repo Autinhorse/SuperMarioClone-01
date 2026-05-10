@@ -69,6 +69,35 @@ export default async function SignupPage({ searchParams }: { searchParams: Searc
               className="w-full h-11 px-3 rounded-xl border-2 border-ink bg-paper focus:outline-none focus:ring-2 focus:ring-brand-purple"
             />
           </Field>
+          <label className="flex items-start gap-2 text-sm text-ink/80">
+            <input
+              type="checkbox"
+              name="agree"
+              required
+              className="mt-0.5 size-4 shrink-0 accent-brand-purple"
+            />
+            <span>
+              I agree to the{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
           <button
             type="submit"
             className="w-full h-12 rounded-full border-2 border-ink bg-brand-purple text-white font-display font-semibold shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"

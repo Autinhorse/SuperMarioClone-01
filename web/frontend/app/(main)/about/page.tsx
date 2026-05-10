@@ -9,6 +9,7 @@ export const metadata = {
 const GITHUB = "https://github.com/Autinhorse/levelcraft";
 const YOUTUBE =
   "https://www.youtube.com/watch?v=RokVE021Ug4&list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv&pp=sAgC";
+const DISCORD = "https://discord.gg/prAuYMsBvc";
 
 export default function AboutPage() {
   return (
@@ -333,12 +334,15 @@ function LinksFooter() {
   return (
     <section className="rounded-3xl border-2 border-ink bg-white p-6 lg:p-8 shadow-[4px_4px_0_0_var(--color-ink)]">
       <h2 className="font-display font-bold text-xl mb-4">Follow along</h2>
-      <ul className="grid sm:grid-cols-3 gap-3">
+      <ul className="grid sm:grid-cols-2 gap-3">
         <li>
           <ExternalLink href={GITHUB} label="GitHub" sub="Source on github.com" />
         </li>
         <li>
           <ExternalLink href={YOUTUBE} label="YouTube" sub="Build playlist" />
+        </li>
+        <li>
+          <ExternalLink href={DISCORD} label="Discord" sub="Join the community" />
         </li>
         <li>
           <Link
