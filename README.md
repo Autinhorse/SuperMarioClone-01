@@ -64,6 +64,33 @@ Wish me luck.
 
 ---
 
+🌐 Live Platform: https://levelcraft.gg
+📂 GitHub Repo: https://github.com/Autinhorse/levelcraft
+📺 Discord Server: https://discord.gg/prAuYMsBvc
+
+---
+Summary of Results: 11 days—and the website is live now. It includes the site itself, the game, and a level editor—all built with zero lines of handwritten code. You can check out the results for yourselves at Levelcraft.gg.
+
+The "Zero-Code" Reality
+The entire project was built in VS Code using Claude Code for architecture and logic, and Codex for sprite generation. The site runs on Vercel and Supabase.
+
+I started with Godot, but following Claude’s advice, I migrated to Phaser. Despite having Unity experience, my knowledge of both these engines was—and still is—zero. I haven’t handwritten a single line of code. Claude architected the system, suggested a 13-step migration plan when we switched engines, and guided me through every integration.
+
+Reflections on the Future
+What used to take an experienced developer 3 to 6 months can now be achieved in weeks through AI guidance.
+
+The old paradigm—where a domain expert explains requirements to a developer, who then implements and tests—is collapsing. If the expert can talk directly to the AI, the efficiency becomes terrifying. We are reaching a point where the "developer" as a middleman may no longer be necessary. (A realization that makes this old coder both weep and wonder!)
+
+However, experience still matters. When my character got stuck jumping against walls, my intuition told me it was a collision box issue. I didn't need to code the fix; I just needed to tell the AI: "Shrink the collision box by a few pixels and add a slight bounce-back." Experience is now about knowing what to tell the AI, not how to syntax it.
+
+The Path Ahead
+AI can help us work, but it cannot help us think. It accelerates the realization of an idea, but the "Big Idea" remains human.
+
+LevelCraft has proven that the technical barriers to "Super Mario Maker" are gone. My next challenge? A project I’ve sat on for 10 years: a Sudoku masterclass game that teaches complex logic step-by-step. No fancy art—just pure, complex programmatic logic to see exactly where the ceiling of AI truly lies.
+
+Game By Talk Only. The experiment continues.
+
+
 ### 📅 Ricochet Development Logs
 * [**000:** My AI Dev Team and Tech Stack ](./games/ricochet/devlogs/en/000.My%20AI%20Dev%20Team%20and%20Tech%20Stack.md)
 * [**001:** Day 1 - The First 3 Hours of Ricochet ](./games/ricochet/devlogs/en/001.Day%201%20-%20The%20first%20three%20hours%20of%20Ricochet.md)
