@@ -22,11 +22,23 @@ Full gameplay design: `design/design.md`. Level editor design: `design/editor.md
 ## Source layout
 
 - `src/main.ts` — Phaser game config, scene registration, URL-mode boot (`?mode=edit` selects EditScene)
-- `src/game/scenes/` — `PlayScene` (runtime), `EditScene` (level editor)
+- `src/game/scenes/` — `PlayScene` (runtime), `EditScene` (level editor), `MenuScene` (standalone landing)
 - `src/game/entities/` — `Player`, `Bullet`, `Cannon`, `Turret`, `Gear`, etc.
 - `src/game/config/feel.ts` — tunable constants (colors, speeds, gravity, etc.)
 - `src/shared/level-format/` — level JSON schema + loader, shared between Play and Edit scenes (NOT shared with other games — "shared" here means within Ricochet)
 - `public/` — static assets, default level JSON
+
+## Builds
+
+Same source, three boot paths (see `src/main.ts`):
+
+| script | base | output | runs | for |
+|---|---|---|---|---|
+| `npm run build` | `/` | `dist/` | MenuScene on a bare `index.html` | local check / preview |
+| `npm run build:embed` | `/games/ricochet/` | `dist/` | waits for `postMessage` level data | the web platform's iframe (`web/frontend/public/games/ricochet/`) |
+| `npm run build:standalone` | `./` | `dist-standalone/` | MenuScene → play campaign / "Try the Level Editor" | **itch.io** (zip the *contents* of `dist-standalone/`, `index.html` at the root) and any static host |
+
+The standalone build has **no backend**. Its editor runs in "try mode" (`EditScene.isTryMode()` = no host iframe and no disk path): Save writes the level JSON to `localStorage` (key `ricochet:try-draft`, one scratch slot, reloaded on the next visit), a persistent banner explains the limits, and a "Download .json" button lets the user keep a file. The menu footer and that banner link to `levelcraft.gg` (`LEVELCRAFT_URL` in `feel.ts`) — itch.io is a discovery channel, the platform itself is the website. See `docs/decisions.md` ADR-002. `?dev=1` keeps the old "menu grid opens the editor" authoring shortcut.
 
 ---
 

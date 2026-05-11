@@ -215,7 +215,11 @@ export class PlayScene extends Phaser.Scene {
   // of the centered-room camera scroll.
   private fadeOverlay!: Phaser.GameObjects.Rectangle;
   private transitioning = false;
-  private debugText!: Phaser.GameObjects.Text;
+  // Developer-facing state readout (player state / velocity / touching /
+  // blocked). Only created when `?dev=1` is in the URL — hidden from
+  // players (campaign, itch standalone, the embedded web player). When
+  // undefined the per-frame update is skipped.
+  private debugText?: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
   // DOM "Back to Editor" button — only shown when launched from EditScene.
   private backButton: HTMLDivElement | null = null;
@@ -467,17 +471,21 @@ export class PlayScene extends Phaser.Scene {
       })
       .setScrollFactor(0);
 
-    // Debug state (developer-facing) — pushed to the top-right so it
-    // stays available without crowding the coin HUD.
-    this.debugText = this.add
-      .text(this.scale.gameSize.width - 16, 16, '', {
-        color: '#cccccc',
-        fontSize: '14px',
-        fontFamily: 'monospace',
-        align: 'right',
-      })
-      .setOrigin(1, 0)
-      .setScrollFactor(0);
+    // Debug state (developer-facing) — top-right, opt-in via `?dev=1` so
+    // it never crowds a real player's screen. Mirrors MenuScene's dev
+    // toggle. When the param is absent `this.debugText` stays undefined
+    // and update() skips the readout entirely.
+    if (new URLSearchParams(window.location.search).get('dev') === '1') {
+      this.debugText = this.add
+        .text(this.scale.gameSize.width - 16, 16, '', {
+          color: '#cccccc',
+          fontSize: '14px',
+          fontFamily: 'monospace',
+          align: 'right',
+        })
+        .setOrigin(1, 0)
+        .setScrollFactor(0);
+    }
 
     // Fade overlay (full design viewport, scroll-locked, on top of
     // everything). Starts opaque on a transition entrance so the player
@@ -660,14 +668,16 @@ export class PlayScene extends Phaser.Scene {
       if (bullet.active) bullet.tick(dt);
     });
 
-    const t = this.player.body.touching;
-    const b = this.player.body.blocked;
-    this.debugText.setText([
-      `state: ${PlayerState[this.player.state]}`,
-      `vel: (${this.player.body.velocity.x.toFixed(0)}, ${this.player.body.velocity.y.toFixed(0)})`,
-      `touching: ${t.up ? 'U' : '-'}${t.down ? 'D' : '-'}${t.left ? 'L' : '-'}${t.right ? 'R' : '-'}`,
-      `blocked:  ${b.up ? 'U' : '-'}${b.down ? 'D' : '-'}${b.left ? 'L' : '-'}${b.right ? 'R' : '-'}`,
-    ]);
+    if (this.debugText) {
+      const t = this.player.body.touching;
+      const b = this.player.body.blocked;
+      this.debugText.setText([
+        `state: ${PlayerState[this.player.state]}`,
+        `vel: (${this.player.body.velocity.x.toFixed(0)}, ${this.player.body.velocity.y.toFixed(0)})`,
+        `touching: ${t.up ? 'U' : '-'}${t.down ? 'D' : '-'}${t.left ? 'L' : '-'}${t.right ? 'R' : '-'}`,
+        `blocked:  ${b.up ? 'U' : '-'}${b.down ? 'D' : '-'}${b.left ? 'L' : '-'}${b.right ? 'R' : '-'}`,
+      ]);
+    }
     this.hudText.setText(`coins: ${this.coinCount}`);
   }
 

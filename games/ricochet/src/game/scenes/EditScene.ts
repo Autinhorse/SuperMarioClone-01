@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import {
   COLOR_BACKGROUND,
   DEFAULT_LEVEL_URL,
+  LEVELCRAFT_URL,
   TILE_SIZE,
 } from '../config/feel';
 import { validateLevel } from '../../shared/level-format/load';
@@ -60,6 +61,14 @@ import {
 import type { SelectedElement } from './editor/types';
 
 const LEVEL_KEY = 'editor-level';
+
+// localStorage slot for the standalone build's "try mode" editor (the
+// itch.io export, or any bare `index.html` open). There's no backend
+// and no dev-server save endpoint there, so Save writes the level JSON
+// here and the editor reloads it on the next visit. One slot — try mode
+// is a single-scratchpad experience, not a level library. Namespaced so
+// it can't collide with anything else on the origin.
+const TRY_DRAFT_KEY = 'ricochet:try-draft';
 
 // One ID per placeable thing — direction / color / target-page now live
 // in `toolParams` instead of being baked into the tool name. Selecting a
@@ -154,6 +163,16 @@ export class EditScene extends Phaser.Scene {
   // switch is `removeAll(true)` instead of tracking each game object.
   private pageRoot!: Phaser.GameObjects.Container;
   private palette: HTMLDivElement | null = null;
+  // Standalone "try mode" banner — shown only when the editor has no
+  // host iframe and no disk path (see isTryMode()). Explains that
+  // levels live in localStorage only and links out to LevelCraft.
+  private tryModeBanner: HTMLDivElement | null = null;
+  // Set once the try-mode "heads up about saving" dialog has been shown,
+  // so it pops on the first editor entry of the session and not again on
+  // every Play↔Edit round-trip. Deliberately NOT reset in init() — it
+  // should survive scene restarts (a page refresh starts a fresh game
+  // instance, so it shows again then, which is fine).
+  private tryModeDialogShown = false;
   private paramsPanel: HTMLDivElement | null = null;
   private pageLabel: HTMLSpanElement | null = null;
   private fileLabel: HTMLSpanElement | null = null;
@@ -270,6 +289,16 @@ export class EditScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // Try mode (standalone, no host, no disk path): if a draft was
+    // saved to localStorage on a previous visit, resume it instead of
+    // the default sandbox so a page refresh doesn't wipe the user's
+    // work. A corrupt / incompatible blob is ignored (we fall through
+    // to the normal load below).
+    if (!this.level && this.isTryMode()) {
+      const draft = this.loadTryDraft();
+      if (draft) this.level = draft;
+    }
+
     // Only fetch a level file when not handed one via init() (e.g. the
     // editor's Play hand-off carries the in-memory level back). When a
     // levelPath was provided we load that file specifically; otherwise
@@ -319,6 +348,16 @@ export class EditScene extends Phaser.Scene {
     this.pageRoot = this.add.container(0, 0);
     this.renderPage();
     this.buildPalette();
+    if (this.isTryMode()) {
+      this.buildTryModeBanner();
+      // First editor entry this session: surface the save-persistence
+      // caveat as a dialog. The banner stays as the ongoing reminder
+      // (and carries the Download button).
+      if (!this.tryModeDialogShown) {
+        this.tryModeDialogShown = true;
+        this.showTryModeDialog();
+      }
+    }
 
     // Cell click → apply selected tool. Phaser's `pointer.worldX/Y` already
     // factors in camera scroll + canvas-fit scaling, so we get true world
@@ -377,6 +416,7 @@ export class EditScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.cancelDrag();
       this.destroyPalette();
+      this.destroyTryModeBanner();
       if (this.publishVerifyListener) {
         window.removeEventListener('message', this.publishVerifyListener);
         this.publishVerifyListener = null;
@@ -385,6 +425,7 @@ export class EditScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.DESTROY, () => {
       this.cancelDrag();
       this.destroyPalette();
+      this.destroyTryModeBanner();
       if (this.publishVerifyListener) {
         window.removeEventListener('message', this.publishVerifyListener);
         this.publishVerifyListener = null;
@@ -490,13 +531,17 @@ export class EditScene extends Phaser.Scene {
     this.updateLabels();
   }
 
-  // Save back to disk via the Vite dev-server middleware. Returns true
-  // on success, false on any failure (so callers like the unsaved-
-  // changes modal can keep the user in the editor when a save fails
-  // mid-flow). Whitelisted paths are levels/level-NN.json; saving from
-  // a "no known path" scene falls back to a download so changes are
-  // still recoverable when the editor is opened against an ad-hoc
-  // level (e.g. DEFAULT_LEVEL_URL).
+  // Save the level. Three destinations depending on how the editor was
+  // launched:
+  //   embedded (LevelCraft web platform) → postMessage round-trip; the
+  //     host page writes to Supabase under the user's session.
+  //   try mode (standalone build, no host, no disk path) → localStorage,
+  //     so the scratch level survives a refresh. See isTryMode().
+  //   dev / authoring (levelPath set) → POST to the Vite dev-server
+  //     middleware, which writes back to public/levels/level-NN.json.
+  // Returns true on success, false on any failure (so callers like the
+  // unsaved-changes modal can keep the user in the editor when a save
+  // fails mid-flow).
   private async saveLevel(): Promise<boolean> {
     const saveBtn = this.palette?.querySelector(
       '[data-action="save"]',
@@ -515,11 +560,12 @@ export class EditScene extends Phaser.Scene {
       return true;
     }
 
-    // Standalone path: dev-server middleware writes back to disk.
-    // No levelPath → fall back to a download so changes aren't lost.
+    // Try mode: no backend and no dev-server endpoint — persist to
+    // localStorage so the level isn't lost on refresh.
     if (!this.levelPath) {
-      this.downloadLevel();
+      if (!this.saveTryDraft()) return false;
       this.dirty = false;
+      this.flashSaveButton(saveBtn);
       return true;
     }
     try {
@@ -603,8 +649,9 @@ export class EditScene extends Phaser.Scene {
     this.scene.start('MenuScene');
   }
 
-  // Fallback when no levelPath is known — kicks the JSON down through
-  // a browser download so the user can still recover their edits.
+  // Kicks the current level's JSON down as a browser download. Used by
+  // the try-mode banner's "Download .json" button so a standalone-build
+  // user can keep a file and rebuild the level on levelcraft.gg.
   private downloadLevel(): void {
     const blob = new Blob([JSON.stringify(this.level, null, 2)], {
       type: 'application/json',
@@ -617,6 +664,52 @@ export class EditScene extends Phaser.Scene {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  // --- standalone "try mode" --------------------------------------------
+
+  // True when the editor was opened without a host iframe (embedLevelId)
+  // and without a disk path (levelPath) — i.e. the standalone build's
+  // "Try the Level Editor" entry, or a bare `?mode=edit` open. There's
+  // no backend and no dev-server save endpoint in that situation, so
+  // Save goes to localStorage and a banner explains the limits.
+  private isTryMode(): boolean {
+    return !this.embedLevelId && !this.levelPath;
+  }
+
+  // Persist the in-memory level to localStorage. Returns false (and
+  // alerts) if storage is unavailable or full — quota is the realistic
+  // failure for a single level blob in private-browsing modes.
+  private saveTryDraft(): boolean {
+    try {
+      window.localStorage.setItem(TRY_DRAFT_KEY, JSON.stringify(this.level));
+      return true;
+    } catch (err) {
+      alert(
+        `Couldn't save to this browser's storage: ${(err as Error).message}\n\n` +
+          `Use "Download .json" in the banner to keep a copy instead.`,
+      );
+      return false;
+    }
+  }
+
+  // Read back a previously-saved try-mode draft. Returns null if there
+  // is none, or if the stored blob is corrupt / fails level validation
+  // (e.g. saved by an older build with an incompatible schema) — the
+  // caller then falls back to the default sandbox level.
+  private loadTryDraft(): LevelData | null {
+    let raw: string | null;
+    try {
+      raw = window.localStorage.getItem(TRY_DRAFT_KEY);
+    } catch {
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      return validateLevel(JSON.parse(raw) as unknown, 'localStorage try-mode draft');
+    } catch {
+      return null;
+    }
   }
 
   // --- tool palette ------------------------------------------------------
@@ -694,6 +787,78 @@ export class EditScene extends Phaser.Scene {
       this.fileLabel = null;
       this.selectedTool = null;
     }
+  }
+
+  // Bottom-left banner shown only in try mode (standalone build). Sets
+  // expectations up front: this level lives in this browser only, and
+  // the real platform (accounts, community, publishing) is at
+  // levelcraft.gg. The "Download .json" button is the bridge — keep a
+  // file, rebuild it there. Anchored bottom-left so it clears the
+  // right-edge tool palette and the canvas's top rows.
+  private buildTryModeBanner(): void {
+    if (this.tryModeBanner) return;
+    const banner = document.createElement('div');
+    banner.className = 'editor-trymode-banner';
+    banner.innerHTML = `
+      <div class="editor-trymode-text">
+        <b>Try mode.</b> Levels you build here are saved in <b>this browser only</b>
+        (and lost if you clear site data). To get an account, play community levels,
+        or publish online, head to
+        <a href="${LEVELCRAFT_URL}" target="_blank" rel="noopener">levelcraft.gg</a>.
+      </div>
+      <button data-action="download" class="editor-trymode-btn">Download .json</button>
+    `;
+    banner.querySelector('[data-action="download"]')?.addEventListener('click', () => {
+      this.downloadLevel();
+    });
+    document.body.appendChild(banner);
+    this.tryModeBanner = banner;
+  }
+
+  private destroyTryModeBanner(): void {
+    if (this.tryModeBanner) {
+      this.tryModeBanner.remove();
+      this.tryModeBanner = null;
+    }
+  }
+
+  // One-time-per-session heads-up shown when the standalone editor
+  // opens (see create()). Same message as the try-mode banner, but as
+  // a modal so it actually gets read before the user starts building.
+  // Informational, not a decision — dismiss on the button or the dark
+  // backdrop; clicks inside the dialog body (the levelcraft.gg link)
+  // are ignored so the link works.
+  private showTryModeDialog(): void {
+    const modal = document.createElement('div');
+    modal.className = 'editor-modal';
+    modal.innerHTML = `
+      <div class="editor-modal-backdrop"></div>
+      <div class="editor-modal-content">
+        <p>
+          <b>Heads up — try mode.</b> Levels you build here are saved in
+          <b>this browser only</b>. Save keeps them across page refreshes,
+          but clearing site data wipes them and there's no sync to other
+          devices. To get an account, play community-made levels, or
+          publish your level online, head to
+          <a href="${LEVELCRAFT_URL}" target="_blank" rel="noopener">levelcraft.gg</a> —
+          and use <b>Download .json</b> (bottom-left) to keep a copy and rebuild it there.
+        </p>
+        <div class="editor-modal-actions">
+          <button data-modal-action="ok" class="editor-modal-btn editor-modal-btn-primary">Got it</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (ev) => {
+      const target = ev.target as HTMLElement;
+      if (
+        target.getAttribute('data-modal-action') === 'ok' ||
+        target.classList.contains('editor-modal-backdrop')
+      ) {
+        this.sound.play(SOUND_KEYS.uiButton, { volume: SOUND_VOLUMES.sfx });
+        modal.remove();
+      }
+    });
   }
 
   // Click router for everything inside the palette. Branches on which

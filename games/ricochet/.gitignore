@@ -1,6 +1,7 @@
 # Phaser project — local node + build artifacts
 node_modules/
 dist/
+dist-standalone/
 
 # Vite cache
 .vite/

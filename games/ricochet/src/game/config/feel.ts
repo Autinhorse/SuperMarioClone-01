@@ -21,6 +21,13 @@ export const DEFAULT_PAGE_INDEX = 0;
 // `level-NN.json` files (and also place the JSON under public/levels).
 export const CAMPAIGN_LEVEL_COUNT = 10;
 
+// The LevelCraft web platform. Surfaced as an outbound link in the
+// standalone build (e.g. the itch.io export): the menu footer and the
+// editor's "try mode" banner point here for accounts, community levels,
+// and online publishing — none of which the static standalone build can
+// do on its own.
+export const LEVELCRAFT_URL = 'https://levelcraft.gg';
+
 // ----- Player tuning (in tiles; converted to px in Player.ts via TILE_SIZE) -----
 
 export const FLIGHT_SPEED_TILES = 40.0;       // every directed launch
