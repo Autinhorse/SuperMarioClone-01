@@ -1,8 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
 const navLinks: { label: string; href: string; external?: boolean }[] = [
   { label: "Explore", href: "/explore" },
+  { label: "DevLog", href: "/devlog" },
   { label: "About", href: "/about" },
   { label: "Discord", href: "https://discord.gg/prAuYMsBvc", external: true },
 ];
@@ -27,9 +29,14 @@ export async function TopNav() {
     <header className="w-full px-6 lg:px-10 pt-6">
       <nav className="flex items-center justify-between gap-6 flex-wrap">
         <Link href="/" className="flex items-center gap-3">
-          <span className="text-3xl" aria-hidden>
-            ☀️
-          </span>
+          <Image
+            src="/logo.png"
+            alt="LevelCraft"
+            width={44}
+            height={44}
+            priority
+            className="size-11 rounded-xl"
+          />
           <div className="leading-tight">
             <div className="font-display font-bold text-2xl tracking-tight">LevelCraft</div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-ink/60">

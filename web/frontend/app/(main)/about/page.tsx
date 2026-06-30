@@ -270,14 +270,10 @@ function Prose({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Inline emphasis on key sentences — coral underline + bold so the
-// phrase pulls the eye without breaking the prose flow.
+// Inline emphasis on key sentences — bold ink so the phrase pulls the
+// eye without breaking the prose flow.
 function Highlight({ children }: { children: React.ReactNode }) {
-  return (
-    <strong className="text-ink decoration-brand-coral underline decoration-[3px] underline-offset-2">
-      {children}
-    </strong>
-  );
+  return <strong className="font-bold text-ink">{children}</strong>;
 }
 
 function PullQuote({ children }: { children: React.ReactNode }) {

@@ -19,6 +19,8 @@ games/
 
 Each game is a self-contained project: its own `package.json`, build, assets, and design docs. Games do **not** share runtime code or assets. They share the engine choice and the docs in this directory.
 
+> **Note:** `origin/` has been migrated out of this repo. It is now a standalone **Godot** project at <https://github.com/Autinhorse/levelcraft.origin> (targeting Steam, with a possible HTML5 build hosted at `levelcraft.gg/games/origin`). Only `origin/devlogs/` is kept here as historical record. The Phaser/web context in this repo does **not** apply to the Origin game.
+
 ## Tech stack (all games)
 
 - **Engine:** Phaser 4 (4.1.0+ "Salusa") — WebGL renderer, Arcade Physics

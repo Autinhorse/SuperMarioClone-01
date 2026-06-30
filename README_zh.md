@@ -41,16 +41,7 @@
 
 让我们一起看看，AI 在这个时代能给我们带来什么样的奇迹。
 
-
-** 插曲，项目： Ricochet **
-关于Ricochet  
-* [**关于Ricochet:**](./games/ricochet/devlogs/zh/Ricochet-Readme.zh.md)
-Youtube Channel Available here:
-[![Watch the Ricochet Series](https://img.youtube.com/vi/OV4my9E5MFs/maxresdefault.jpg)](https://www.youtube.com/playlist?list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv)
-
-**下一步：**
-
-经过了Ricochet的实践，我对这个游戏更有信心了。然后“野心”也有点膨胀了。希望能高出一个比Super Mario Maker内容更多的产品。
+然后“野心”也有点膨胀了。希望能高出一个比Super Mario Maker内容更多的产品。
 
 - 努力实现90%以上的道具，其它游戏有好的道具可以引进。
 - 美术素材完全可换，可以从根本包装成一个完全不一样的游戏。
@@ -64,10 +55,29 @@ Youtube Channel Available here:
 
 ### 📅 LevelCraft:Origin 开发日志
 
-* [**000:** 我的"AI 研发团队"与技术栈](./games/origin/devlogs/zh/000.%20我的“AI%20研发团队”与技术栈.md)
+* [**2026-06-30 Week 01，Day 0:** 我的"AI 研发团队"与技术栈](./games/origin/devlogs/zh/2026-06-30%20Week%2001，Day%200.%20我的“AI%20研发团队”与技术栈.md)
 
 
 *（更多更新稍后放出……）*
+
+---
+
+🌐 Live Platform: https://levelcraft.gg
+📂 GitHub Repo: https://github.com/Autinhorse/levelcraft
+📺 Discord Server: https://discord.gg/prAuYMsBvc
+
+---
+
+
+** 插曲一，项目： Ricochet **
+关于Ricochet。 我第一次在论坛提出这个想法的时候，被泼了一些冷水。然后我停下来做了下面这个实验项目，大大增加了我的信心。
+
+* [**关于Ricochet:**](./games/ricochet/devlogs/zh/Ricochet-Readme.zh.md)
+Youtube Channel Available here:
+[![Watch the Ricochet Series](https://img.youtube.com/vi/OV4my9E5MFs/maxresdefault.jpg)](https://www.youtube.com/playlist?list=PLGRcYbz8uCmBZSH-Ob8TIuEb3_6B3GdZv)
+
+
+经过了Ricochet的实践，我对这个游戏更有信心了。
 
 ---
 © 2026 AI Dream Builder. Built with 🤖 and ❤️.
