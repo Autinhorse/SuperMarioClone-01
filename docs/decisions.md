@@ -105,142 +105,18 @@ This is the mechanism that enforces the table above. `levels.creator_id`, `likes
 
 ### Schema changes
 
-To be applied as `web/supabase/migrations/20260801120000_guest_accounts.sql`. Written against the existing `handle_new_user` trigger from `20260503120000_profiles.sql`.
+**Applied as `web/supabase/migrations/20260801120000_guest_accounts.sql` — that file is the source of truth** (per `web/supabase/migrations/README.md`). It does five things:
 
-```sql
--- 0010 — guest accounts (anonymous sign-in)
--- Guests are real auth.users rows with is_anonymous = true. They get NO
--- profiles row; since levels.creator_id / likes.user_id / ratings.user_id
--- all reference profiles(id), that single fact is what makes a guest
--- unable to author or vote. See docs/decisions.md ADR-003.
+1. **`safe_username(candidate, uid)`** — returns the candidate if it is format-valid *and* not already taken, otherwise a placeholder derived from the uuid (`player_` + 10 hex = 17 chars, inside the `^[a-zA-Z0-9_]{3,20}$` CHECK, unique by construction).
+2. **`handle_new_user()` rewritten to tolerate anonymous signups.** The version from migration 0001 inserts `raw_user_meta_data->>'username'` straight into a NOT NULL column; an anonymous signup carries no metadata, so the insert raises and **the entire auth transaction rolls back — anonymous sign-in returns a 500 until this is fixed**. Guests now return early with no profile row. Guiding principle: *anything running inside an auth trigger must be incapable of failing*, so the insert also has a `unique_violation` handler that falls back to the id-derived name rather than re-raising.
+3. **`handle_user_converted()` + `on_auth_user_converted`** — fires when `is_anonymous` flips false (i.e. after email confirmation) and creates the profile row then. Same no-fail discipline.
+4. **`is_guest()`** — reads the `is_anonymous` JWT claim. ⚠️ Anonymous users hold the **`authenticated`** role, not `anon`, so every existing `auth.uid() = <owner>` policy already admits them; enabling anonymous sign-in *without* this migration would let guests publish on day one. The insert policies on `levels` / `likes` / `ratings` gain `and not public.is_guest()`.
+5. **`purge_stale_guests(interval)`** — admin-only, `revoke`d from `anon`/`authenticated`; pg_cron scheduling is deliberately left out of the migration.
 
--- 1. Signup trigger must tolerate anonymous users.
---
--- The current version inserts raw_user_meta_data->>'username' into a
--- NOT NULL column. An anonymous signup carries no metadata, so the
--- insert raises and the ENTIRE auth transaction rolls back — anonymous
--- sign-in returns a 500 until this is fixed. Anything that runs inside
--- an auth trigger must be incapable of failing.
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if new.is_anonymous then
-    return new;   -- guest: no profile row until they convert
-  end if;
-  insert into public.profiles (id, username)
-  values (new.id, public.safe_username(new.raw_user_meta_data ->> 'username', new.id));
-  return new;
-end;
-$$;
+Dashboard settings that are **not** in the file: enabling "Anonymous sign-ins", and turning on CAPTCHA for the signup endpoint (the anon key is public and ships inside the game binary, so minting guests is free for anyone who asks; guests own nothing, but `auth.users` still grows).
 
--- Fallback username. Never let a missing/invalid username abort a
--- signup: derive a unique, format-valid placeholder from the user id
--- and let the client rename afterwards. 'player_' + 10 hex chars = 17
--- chars, inside the ^[a-zA-Z0-9_]{3,20}$ CHECK, and unique because the
--- uuid is.
-create or replace function public.safe_username(candidate text, uid uuid)
-returns text
-language sql
-immutable
-as $$
-  select case
-    when candidate ~ '^[a-zA-Z0-9_]{3,20}$' then candidate
-    else 'player_' || substr(replace(uid::text, '-', ''), 1, 10)
-  end;
-$$;
+Hardening added while writing the migration, beyond what this ADR originally sketched: the username **uniqueness** check inside `safe_username` (format validity alone is not enough — a taken name would raise inside the trigger and abort the signup, which is the exact failure mode this migration exists to remove), and `drop ... if exists` guards throughout so the file is re-runnable in the SQL editor.
 
--- 2. Conversion: guest -> permanent account creates the profile row.
---
--- is_anonymous flips false only after email confirmation, so this fires
--- at the right moment. raw_user_meta_data.username was written earlier
--- (at the PUT /auth/v1/user call) and is still there. ON CONFLICT and
--- safe_username together guarantee this trigger cannot abort the update.
-create or replace function public.handle_user_converted()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if old.is_anonymous and not new.is_anonymous then
-    insert into public.profiles (id, username)
-    values (new.id, public.safe_username(new.raw_user_meta_data ->> 'username', new.id))
-    on conflict (id) do nothing;
-  end if;
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_converted
-  after update on auth.users
-  for each row execute function public.handle_user_converted();
-
--- 3. Guest predicate for policies.
---
--- Anonymous users hold the `authenticated` role, NOT `anon` — every
--- existing policy written as `auth.uid() = <owner>` already admits them.
--- The is_anonymous JWT claim is the only thing that separates the two.
--- COALESCE covers unauthenticated callers (no claim); they fail the
--- auth.uid() half of every policy below anyway.
-create or replace function public.is_guest()
-returns boolean
-language sql
-stable
-as $$
-  select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false);
-$$;
-
--- 4. Authoring and voting policies exclude guests.
---
--- Redundant with the profiles FK by design: the FK is the guarantee,
--- these are the readable statement of intent and the source of a clean
--- 403 instead of a 23503.
-drop policy if exists "users insert own levels" on public.levels;
-create policy "non-guest users insert own levels"
-  on public.levels for insert
-  with check (auth.uid() = creator_id and not public.is_guest());
-
-drop policy if exists "users like as themselves" on public.likes;
-create policy "non-guest users like as themselves"
-  on public.likes for insert
-  with check (auth.uid() = user_id and not public.is_guest());
-
-drop policy if exists "users rate as themselves" on public.ratings;
-create policy "non-guest users rate as themselves"
-  on public.ratings for insert
-  with check (auth.uid() = user_id and not public.is_guest());
-
--- UPDATE/DELETE policies on those tables are left alone: they are
--- scoped to rows the caller owns, and a guest owns none.
-
--- 5. Purge stale guests.
---
--- Guests own nothing (no profile row => no levels, likes or ratings),
--- so this deletes no user data. Clients must handle a dead session by
--- minting a new guest silently.
-create or replace function public.purge_stale_guests(older_than interval default '90 days')
-returns integer
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-declare
-  removed integer;
-begin
-  delete from auth.users
-   where is_anonymous
-     and coalesce(last_sign_in_at, created_at) < now() - older_than;
-  get diagnostics removed = row_count;
-  return removed;
-end;
-$$;
-
-revoke execute on function public.purge_stale_guests(interval) from anon, authenticated;
-```
 
 Scheduling: run `purge_stale_guests()` weekly via pg_cron. **Verify before enabling** that a `grant_type=refresh_token` call actually advances `last_sign_in_at`; if it does not, an active desktop player who never re-authenticates would be purged at 90 days. That is survivable (the client re-mints), but it makes the interval meaningless, in which case switch the predicate to a column we control.
 
