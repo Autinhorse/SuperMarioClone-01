@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { publishLevelThumbnail } from "@/lib/thumbnail/publish";
+import { requireUser } from "@/lib/api/auth";
+import { saveLevelData } from "@/lib/levels/mutations";
+import { preparePublish } from "@/lib/levels/publish";
 
 type Params = Promise<{ id: string }>;
 
@@ -21,32 +24,14 @@ export async function PUT(req: Request, { params }: { params: Params }) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
 
-  // Saving the level data invalidates the playtest gate — the player
-  // hasn't cleared *this* version yet. NULL is the "needs verify"
-  // sentinel; mark-cleared sets it back to a timestamp on a successful
-  // verify run. Done in the same UPDATE so the two never get out of
-  // sync (e.g. via a save that races with a separate clear-clear write).
-  const { data: rows, error } = await supabase
-    .from("levels")
-    .update({ data: body.data, last_cleared_at: null })
-    .eq("id", id)
-    .select("id");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  if (!rows || rows.length === 0) {
-    return NextResponse.json(
-      { error: "Level not found, or you don't have permission to edit it." },
-      { status: 404 },
-    );
+  // Body (including the "saving clears the playtest gate" rule) lives in
+  // lib/levels/mutations.ts:saveLevelData — shared with /api/v1/.
+  const result = await saveLevelData(supabase, id, body.data);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
   return NextResponse.json({ ok: true });
 }
@@ -109,12 +94,8 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
 
   // Publish path. Three branches share an early SELECT so we read the
   // row at most once, regardless of which branch we end up on:
@@ -128,98 +109,39 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
   //      gone — the parent stays 'published'. Preserves parent's id /
   //      play_count / like_count / created_at across the edit.
   //   3. Non-publish PATCH (title, or unpublish): skip this whole block.
+  //
+  // The rules themselves (gate + swap) live in lib/levels/publish.ts so the
+  // bearer routes in /api/v1/ run the identical logic — a bypassed swap would
+  // destroy the parent's id, play_count and permalinks. What stays here is the
+  // Next-specific part: revalidatePath (throws outside a Route Handler) and
+  // response shaping.
   let nextThumbnailUrl: string | null = null;
   if (update.status === "published") {
-    const { data: current, error: readErr } = await supabase
-      .from("levels")
-      .select("status, last_cleared_at, data, parent_id, title, description")
-      .eq("id", id)
-      .maybeSingle();
-    if (readErr) {
-      return NextResponse.json({ error: readErr.message }, { status: 500 });
-    }
-    if (!current) {
+    const outcome = await preparePublish(supabase, id, (publicId, data) =>
+      publishLevelThumbnail(publicId, data),
+    );
+    if (outcome.kind === "error") {
       return NextResponse.json(
-        { error: "Level not found, or you don't have permission to edit it." },
-        { status: 404 },
+        outcome.code
+          ? { error: outcome.error, code: outcome.code }
+          : { error: outcome.error },
+        { status: outcome.status },
       );
     }
-    const isFork = current.parent_id !== null;
-
-    // Gate. For an already-published original, allow a no-op republish
-    // without re-test (covers Unpublish→Publish bounce on grandfathered
-    // rows). Forks always require a fresh clear — they exist precisely
-    // because the user just changed the data.
-    const gateApplies = isFork || current.status !== "published";
-    if (gateApplies && current.last_cleared_at === null) {
-      return NextResponse.json(
-        {
-          error:
-            "Test play required: clear this level end-to-end before publishing.",
-          code: "playtest_required",
-        },
-        { status: 400 },
-      );
-    }
-
-    // Storage key = the public-facing level id. For a fork that's the
-    // parent (so the parent's existing thumbnail_url URL stays valid;
-    // upload upserts the same key).
-    const publicId = isFork ? (current.parent_id as string) : id;
-    try {
-      nextThumbnailUrl = await publishLevelThumbnail(publicId, current.data);
-    } catch (err) {
-      return NextResponse.json(
-        {
-          error: `Could not generate thumbnail: ${(err as Error).message}`,
-          code: "thumbnail_failed",
-        },
-        { status: 500 },
-      );
-    }
-
-    if (isFork) {
-      // Swap: copy fork content into parent, then delete fork. Two
-      // statements rather than an RPC for now — partial failure (UPDATE
-      // ok, DELETE fails) leaves the fork orphaned but the user-visible
-      // outcome (live level updated) succeeded. We log and continue.
-      const parentId = current.parent_id as string;
-      const { error: swapErr } = await supabase
-        .from("levels")
-        .update({
-          title: current.title,
-          description: current.description,
-          data: current.data,
-          thumbnail_url: nextThumbnailUrl,
-          last_cleared_at: current.last_cleared_at,
-        })
-        .eq("id", parentId);
-      if (swapErr) {
-        return NextResponse.json({ error: swapErr.message }, { status: 500 });
-      }
-      const { error: delErr } = await supabase
-        .from("levels")
-        .delete()
-        .eq("id", id);
-      if (delErr) {
-        console.error(
-          `[swap ${id}→${parentId}] UPDATE ok but DELETE failed: ${delErr.message}`,
-        );
-      }
-
+    if (outcome.kind === "swapped") {
       // Profile drafts (fork removed) + public listings (parent thumb
       // changed) all need a fresh server render.
       revalidatePath("/u/[username]", "page");
       revalidatePath("/explore", "page");
       revalidatePath("/", "page");
-
       return NextResponse.json({
         ok: true,
-        title: current.title,
+        title: outcome.title,
         status: "published",
-        swappedToId: parentId,
+        swappedToId: outcome.swappedToId,
       });
     }
+    nextThumbnailUrl = outcome.thumbnailUrl;
   }
 
   // Non-fork path: regular UPDATE (status flip, title rename, or both,
@@ -260,12 +182,8 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
 export async function DELETE(_req: Request, { params }: { params: Params }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
 
   const { data: rows, error } = await supabase
     .from("levels")

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { recordCounter } from "@/lib/levels/mutations";
 
 type Params = Promise<{ id: string }>;
 
@@ -12,25 +13,15 @@ type Params = Promise<{ id: string }>;
 // "play count" tracks how many times *other* people have played the
 // level, so author test-runs and the author replaying their own work
 // shouldn't inflate the public-facing number.
+//
+// The body lives in lib/levels/mutations.ts:recordCounter — it was identical
+// to the clear counter but for the RPC name, and /api/v1/ needs the same rules.
 export async function POST(_req: Request, { params }: { params: Params }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) {
-    const { data: level } = await supabase
-      .from("levels")
-      .select("creator_id")
-      .eq("id", id)
-      .maybeSingle();
-    if (level?.creator_id === user.id) {
-      return NextResponse.json({ ok: true, skipped: "owner" });
-    }
+  const result = await recordCounter(supabase, id, "record_play");
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-  const { error } = await supabase.rpc("record_play", { level_text: id });
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, ...result.value });
 }

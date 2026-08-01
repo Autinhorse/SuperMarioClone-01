@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/api/auth";
 
 type Params = Promise<{ id: string }>;
 
@@ -28,12 +29,9 @@ export async function POST(req: Request, { params }: { params: Params }) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
 
   // Owner-rates-own gate: surface a friendly 403 instead of the
   // generic RLS-violation message a self-rating would otherwise hit
@@ -83,12 +81,9 @@ export async function POST(req: Request, { params }: { params: Params }) {
 export async function DELETE(_req: Request, { params }: { params: Params }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
 
   const { error } = await supabase
     .from("ratings")

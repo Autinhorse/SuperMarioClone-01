@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createLevel } from "@/lib/levels/mutations";
 
 const DEFAULT_TITLE = "Untitled level";
 
@@ -48,31 +49,22 @@ export async function GET(req: Request) {
     );
   }
 
-  const { data, error } = await supabase
-    .from("levels")
-    .insert({
-      creator_id: user.id,
-      game_type: "ricochet",
-      title: DEFAULT_TITLE,
-      data: BLANK_LEVEL_DATA,
-      status: "draft",
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    // Surface the real DB error to the caller rather than silently
-    // dropping them back at the homepage; RLS / schema rejections
-    // should be rare, and if we hit one the message identifies why.
-    return NextResponse.json(
-      { error: error?.message ?? "Could not create level." },
-      { status: 500 },
-    );
+  // The insert lives in lib/levels/mutations.ts:createLevel — shared with
+  // POST /api/v1/levels. What stays here is the browser-specific part:
+  // revalidatePath and the 302 into the editor.
+  const result = await createLevel(supabase, {
+    creatorId: user.id,
+    gameType: "ricochet",
+    title: DEFAULT_TITLE,
+    data: BLANK_LEVEL_DATA,
+  });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
   revalidatePath("/u/[username]", "page");
 
   return NextResponse.redirect(
-    new URL(`/ricochet/edit/${data.id}`, req.url),
+    new URL(`/ricochet/edit/${result.value.id}`, req.url),
   );
 }

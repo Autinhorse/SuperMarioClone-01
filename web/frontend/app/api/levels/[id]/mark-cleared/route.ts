@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/api/auth";
+import { markCleared } from "@/lib/levels/mutations";
 
 type Params = Promise<{ id: string }>;
 
@@ -16,34 +18,16 @@ type Params = Promise<{ id: string }>;
 export async function POST(_req: Request, { params }: { params: Params }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
+  const auth = await requireUser(supabase);
+  if (!auth.ok) return auth.response;
 
-  const { data: rows, error } = await supabase
-    .from("levels")
-    .update({ last_cleared_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, last_cleared_at, updated_at");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  if (!rows || rows.length === 0) {
-    return NextResponse.json(
-      {
-        error:
-          "Level not found, or you don't have permission to mark it cleared.",
-      },
-      { status: 404 },
-    );
+  const result = await markCleared(supabase, id);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
   return NextResponse.json({
     ok: true,
-    last_cleared_at: rows[0].last_cleared_at,
-    updated_at: rows[0].updated_at,
+    last_cleared_at: result.value.lastClearedAt,
+    updated_at: result.value.updatedAt,
   });
 }
