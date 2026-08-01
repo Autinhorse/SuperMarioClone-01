@@ -27,10 +27,15 @@ web/
 
 ```
 levelcraft.gg/                          Platform homepage
-levelcraft.gg/ricochet                  Ricochet hub (browse, featured levels)
-levelcraft.gg/ricochet/play/{level_id}  Play a specific level
-levelcraft.gg/ricochet/create           Level editor (when built)
+levelcraft.gg/explore                   All published levels, every game
 levelcraft.gg/u/{username}              User profile
+
+levelcraft.gg/ricochet                  Ricochet hub (campaign picker)
+levelcraft.gg/ricochet/play/{level_id}  Play a specific level (iframe)
+levelcraft.gg/ricochet/create           Level editor
+
+levelcraft.gg/origin                    Origin hub (what it is + published levels)
+levelcraft.gg/origin/play/{level_id}    Level page (thumbnail + readout, see below)
 ```
 
 **Decisions:**
@@ -38,6 +43,19 @@ levelcraft.gg/u/{username}              User profile
 - Game name in URL — URLs are self-documenting.
 - User profiles live at platform level (`/u/{username}`), not per-game.
 - Level IDs: short alphanumeric (6–8 chars), like `aB3xK9`. NOT sequential integers, NOT UUIDs.
+- **Every game gets the same URL shape, even when it can't be played here.**
+  Origin is a Godot **desktop** app — no web export is deployed, so
+  `/origin/play/{id}` shows the level's thumbnail and a readout of what's in it
+  instead of a game frame. Same path shape means the permalink doesn't have to
+  change the day a web build lands.
+
+**Never hardcode `/ricochet/...` when turning a level row into a URL.** Levels
+of different games share one table, so a card built from `levels` can be either
+game. `lib/games.ts` is the single registry (`levelHref` / `editHref` /
+`GAMES`); routing by hand is how every level card ended up pointing at
+`/ricochet/play/{id}` and 404ing for Origin levels. `POST /api/v1/levels`
+rejects a `game_type` that isn't in that registry, so no row can exist that
+nothing on the site can render.
 
 ---
 

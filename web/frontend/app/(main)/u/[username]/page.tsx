@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, getProfileLevels, type ProfileLevel } from "@/lib/profile";
 import { formatCount, formatJoinDate } from "@/lib/format";
+import { editHref, levelHref } from "@/lib/games";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { RatingDisplay } from "@/components/RatingWidget";
 import { DeleteLevelButton } from "@/components/DeleteLevelButton";
@@ -131,10 +132,15 @@ function LevelGrid({
           // — the play page would just be an extra click before the
           // owner reaches the only useful action they have for an
           // unpublished level. Published levels keep the play landing.
+          //
+          // Both hrefs are per-game (lib/games.ts). Origin has no web editor,
+          // so `editHref` comes back null there and even a draft falls through
+          // to its level page — which is the only thing the website can show
+          // for a level whose editor lives on the author's desktop.
           href={
-            showDraftBadge
-              ? `/ricochet/edit/${level.id}`
-              : `/ricochet/play/${level.id}`
+            (showDraftBadge ? editHref(level.gameType, level.id) : null) ??
+            levelHref(level.gameType, level.id) ??
+            "/explore"
           }
           className="rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition block relative"
         >

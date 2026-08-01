@@ -4,6 +4,7 @@ import { extractPreviewPage } from "@/lib/level-preview";
 
 type Row = {
   id: string;
+  game_type: string;
   title: string;
   like_count: number;
   play_count: number;
@@ -18,16 +19,24 @@ type Row = {
  * All published levels, freshest first. Capped at `limit` for now (no
  * pagination yet — bump as needed; introduce a paged fetcher when the
  * library outgrows a single page).
+ *
+ * `gameType` narrows to one game — that's what each game's hub page uses to
+ * show "levels built with this game". Omit it for the cross-game /explore feed.
  */
-export async function getAllPublishedLevels(limit = 50): Promise<FeaturedLevel[]> {
+export async function getAllPublishedLevels(
+  limit = 50,
+  gameType?: string,
+): Promise<FeaturedLevel[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("levels")
-    .select("id, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
+    .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
     .eq("status", "published")
     // forks_must_be_draft + status filter already exclude forks; spelled
     // out for clarity so a future reader doesn't have to chase the CHECK.
-    .is("parent_id", null)
+    .is("parent_id", null);
+  if (gameType) query = query.eq("game_type", gameType);
+  const { data, error } = await query
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -41,6 +50,7 @@ export async function getAllPublishedLevels(limit = 50): Promise<FeaturedLevel[]
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return {
       id: row.id,
+      gameType: row.game_type,
       title: row.title,
       creatorUsername: profile?.username ?? null,
       likeCount: row.like_count,

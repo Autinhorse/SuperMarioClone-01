@@ -10,6 +10,9 @@ export type HomepageStats = {
 
 export type FeaturedLevel = {
   id: string;
+  /** Which game this level belongs to. Drives the card's href — levels from
+   *  different games live under different routes (see lib/games.ts). */
+  gameType: string;
   title: string;
   creatorUsername: string | null;
   likeCount: number;
@@ -53,6 +56,7 @@ const DEFAULT_STATS: HomepageStats = {
 
 type FeaturedRow = {
   id: string;
+  game_type: string;
   title: string;
   like_count: number;
   play_count: number;
@@ -81,7 +85,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       // `parent_id is null` is redundant given the forks_must_be_draft
       // CHECK + status filter, but spelled out so a reader doesn't have
       // to chase the constraint to know forks are excluded.
-      .select("id, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
+      .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
       .eq("status", "published")
       .is("parent_id", null)
       .eq("is_featured", true)
@@ -91,7 +95,7 @@ export async function getHomepageData(): Promise<HomepageData> {
     // doesn't matter here; it's the chronological newcomer feed.
     supabase
       .from("levels")
-      .select("id, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
+      .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
       .eq("status", "published")
       .is("parent_id", null)
       .order("published_at", { ascending: false })
@@ -125,6 +129,7 @@ export async function getHomepageData(): Promise<HomepageData> {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return {
       id: row.id,
+      gameType: row.game_type,
       title: row.title,
       creatorUsername: profile?.username ?? null,
       likeCount: row.like_count,

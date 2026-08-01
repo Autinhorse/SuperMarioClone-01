@@ -26,6 +26,10 @@ export type LevelDetail = {
   needsPlaytest: boolean;
   creatorUsername: string | null;
   creatorId: string;
+  /** Public URL of the PNG thumbnail written at publish time. null when the
+   *  level has never been published, or when rendering it failed (that step
+   *  is deliberately non-fatal on both clients). */
+  thumbnailUrl: string | null;
   /** Game-specific level payload. Opaque to the platform. */
   data: unknown;
 };
@@ -45,6 +49,7 @@ type LevelRow = {
   created_at: string;
   published_at: string | null;
   last_cleared_at: string | null;
+  thumbnail_url: string | null;
   profiles: { username: string } | { username: string }[] | null;
 };
 
@@ -56,7 +61,7 @@ export async function getLevel(id: string): Promise<LevelDetail | null> {
       .select(
         // Explicit FK name disambiguates the join — there are two paths from
         // levels to profiles (direct creator FK + m2m via likes).
-        "id, game_type, creator_id, title, description, data, status, like_count, play_count, rating_sum, rating_count, created_at, published_at, last_cleared_at, profiles!levels_creator_id_fkey(username)",
+        "id, game_type, creator_id, title, description, data, status, like_count, play_count, rating_sum, rating_count, created_at, published_at, last_cleared_at, thumbnail_url, profiles!levels_creator_id_fkey(username)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -88,6 +93,7 @@ export async function getLevel(id: string): Promise<LevelDetail | null> {
     needsPlaytest: row.last_cleared_at === null,
     creatorUsername: profile?.username ?? null,
     creatorId: row.creator_id,
+    thumbnailUrl: row.thumbnail_url,
     data: row.data,
   };
 }

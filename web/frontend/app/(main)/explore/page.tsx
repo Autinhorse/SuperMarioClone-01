@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatCount } from "@/lib/format";
 import { getAllPublishedLevels } from "@/lib/explore";
+import { gameInfo, levelHref } from "@/lib/games";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { RatingDisplay } from "@/components/RatingWidget";
 
@@ -44,6 +45,12 @@ export default async function ExplorePage() {
               key={level.id}
               className="relative rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"
             >
+              {/* Which game built this. /explore is cross-game now, and the
+                  thumbnails alone don't say — two very different games can
+                  produce similar-looking little pictures. */}
+              <span className="absolute top-1 left-1 z-10 px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
+                {gameInfo(level.gameType)?.name ?? level.gameType}
+              </span>
               <div className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden bg-paper">
                 <LevelThumbnail
                   thumbnailUrl={level.thumbnailUrl}
@@ -86,11 +93,16 @@ export default async function ExplorePage() {
                   />
                 </div>
               </div>
-              <Link
-                href={`/ricochet/play/${level.id}`}
-                aria-label={level.title}
-                className="absolute inset-0 rounded-2xl"
-              />
+              {/* Href depends on which game the level belongs to — see
+                  lib/games.ts. null (unknown game_type) renders no overlay
+                  rather than a link that 404s. */}
+              {levelHref(level.gameType, level.id) && (
+                <Link
+                  href={levelHref(level.gameType, level.id)!}
+                  aria-label={level.title}
+                  className="absolute inset-0 rounded-2xl"
+                />
+              )}
             </article>
           ))}
         </div>

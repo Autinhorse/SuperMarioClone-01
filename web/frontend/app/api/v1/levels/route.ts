@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { v1Context, rejectGuest } from "@/lib/api/v1";
 import { ok, fail } from "@/lib/api/respond";
 import { createLevel } from "@/lib/levels/mutations";
+import { GAME_SLUGS, isGameSlug } from "@/lib/games";
 
 // POST /api/v1/levels — create a draft owned by the caller.
 //
@@ -38,10 +39,22 @@ export async function POST(req: Request) {
     return fail(400, "Title must be 1–100 characters.", "bad_request");
   }
 
+  // `game_type` decides which set of website routes a level lives under, so
+  // an unrecognised value produces a row nothing on the site can render or
+  // link to. Rejecting here is cheaper than discovering it later as a card
+  // whose link 404s. Origin is the default because this API exists for the
+  // desktop client; browser flows pass their own type explicitly.
   const gameType =
     typeof body.game_type === "string" && body.game_type !== ""
       ? body.game_type
       : "origin";
+  if (!isGameSlug(gameType)) {
+    return fail(
+      400,
+      `Unknown game_type "${gameType}". Expected one of: ${GAME_SLUGS.join(", ")}.`,
+      "bad_request",
+    );
+  }
 
   const formatVersion =
     typeof body.format_version === "number" &&

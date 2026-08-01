@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { levelHref } from "@/lib/games";
 import { formatCount } from "@/lib/format";
 import type { FeaturedLevel } from "@/lib/homepage";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
@@ -75,11 +76,16 @@ export function LatestLevels({ levels }: { levels: FeaturedLevel[] }) {
                   />
                 </div>
               </div>
-              <Link
-                href={`/ricochet/play/${level.id}`}
-                aria-label={level.title}
-                className="absolute inset-0 rounded-2xl"
-              />
+              {/* Href depends on which game the level belongs to — see
+                  lib/games.ts. null (unknown game_type) renders no overlay
+                  rather than a link that 404s. */}
+              {levelHref(level.gameType, level.id) && (
+                <Link
+                  href={levelHref(level.gameType, level.id)!}
+                  aria-label={level.title}
+                  className="absolute inset-0 rounded-2xl"
+                />
+              )}
             </article>
           ))}
         </div>

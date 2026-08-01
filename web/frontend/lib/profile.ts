@@ -9,6 +9,7 @@ export type Profile = {
 
 export type ProfileLevel = {
   id: string;
+  gameType: string;
   title: string;
   status: "draft" | "published" | "removed";
   isFeatured: boolean;
@@ -60,7 +61,7 @@ export async function getProfileLevels(creatorId: string): Promise<ProfileLevel[
   const { data } = await supabase
     .from("levels")
     .select(
-      "id, title, status, is_featured, like_count, play_count, rating_sum, rating_count, published_at, created_at, data, thumbnail_url, parent_id, parent:parent_id(title)",
+      "id, game_type, title, status, is_featured, like_count, play_count, rating_sum, rating_count, published_at, created_at, data, thumbnail_url, parent_id, parent:parent_id(title)",
     )
     .eq("creator_id", creatorId)
     .order("published_at", { ascending: false, nullsFirst: false })
@@ -70,6 +71,7 @@ export async function getProfileLevels(creatorId: string): Promise<ProfileLevel[
     const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
     return {
       id: row.id,
+      gameType: row.game_type,
       title: row.title,
       status: row.status as ProfileLevel["status"],
       isFeatured: row.is_featured,
