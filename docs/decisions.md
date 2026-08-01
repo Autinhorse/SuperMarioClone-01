@@ -111,14 +111,25 @@ This is the mechanism that enforces the table above. `levels.creator_id`, `likes
 2. **`handle_new_user()` rewritten to tolerate anonymous signups.** The version from migration 0001 inserts `raw_user_meta_data->>'username'` straight into a NOT NULL column; an anonymous signup carries no metadata, so the insert raises and **the entire auth transaction rolls back — anonymous sign-in returns a 500 until this is fixed**. Guests now return early with no profile row. Guiding principle: *anything running inside an auth trigger must be incapable of failing*, so the insert also has a `unique_violation` handler that falls back to the id-derived name rather than re-raising.
 3. **`handle_user_converted()` + `on_auth_user_converted`** — fires when `is_anonymous` flips false (i.e. after email confirmation) and creates the profile row then. Same no-fail discipline.
 4. **`is_guest()`** — reads the `is_anonymous` JWT claim. ⚠️ Anonymous users hold the **`authenticated`** role, not `anon`, so every existing `auth.uid() = <owner>` policy already admits them; enabling anonymous sign-in *without* this migration would let guests publish on day one. The insert policies on `levels` / `likes` / `ratings` gain `and not public.is_guest()`.
-5. **`purge_stale_guests(interval)`** — admin-only, `revoke`d from `anon`/`authenticated`; pg_cron scheduling is deliberately left out of the migration.
+5. **`purge_stale_guests(interval)`** — admin-only; pg_cron scheduling is deliberately left out of the migration. **Both of its details were wrong in 0010 and are corrected by `20260801130000_guest_purge_hardening.sql`** — see below.
 
 Dashboard settings that are **not** in the file: enabling "Anonymous sign-ins", and turning on CAPTCHA for the signup endpoint (the anon key is public and ships inside the game binary, so minting guests is free for anyone who asks; guests own nothing, but `auth.users` still grows).
 
 Hardening added while writing the migration, beyond what this ADR originally sketched: the username **uniqueness** check inside `safe_username` (format validity alone is not enough — a taken name would raise inside the trigger and abort the signup, which is the exact failure mode this migration exists to remove), and `drop ... if exists` guards throughout so the file is re-runnable in the SQL editor.
 
+### Verified against a real stack (2026-08-01)
 
-Scheduling: run `purge_stale_guests()` weekly via pg_cron. **Verify before enabling** that a `grant_type=refresh_token` call actually advances `last_sign_in_at`; if it does not, an active desktop player who never re-authenticates would be purged at 90 days. That is survivable (the client re-mints), but it makes the interval meaningless, in which case switch the predicate to a column we control.
+0010 was written by reasoning about Postgres and GoTrue. Running it against a local Supabase stack (Postgres 17.6, GoTrue v2.194.0) **found two defects that reading could not**, both now fixed in migration 0011:
+
+**`revoke execute ... from anon, authenticated` was a no-op, and the function was internet-reachable.** Postgres grants EXECUTE on new functions to **PUBLIC** by default; those two roles never held a direct grant, so revoking from them changed nothing. The ACL read `{=X/postgres,…}` — the leading `=X` is PUBLIC. Reproduced end to end: an anonymous caller holding only the public anon key could `POST /rest/v1/rpc/purge_stale_guests {"older_than":"0 seconds"}` and **delete every anonymous user, including ones created seconds earlier** — 200 OK, 3 of 3 wiped. SECURITY DEFINER meant RLS never entered into it. Fix: `revoke all ... from public`, repeated *after* the `create or replace` (which resets the ACL — exactly how the original revoke ended up meaningless). Generalisable lesson: **any SECURITY DEFINER function in an API-exposed schema is callable over PostgREST unless PUBLIC is revoked.**
+
+**The activity predicate purged active players.** A `grant_type=refresh_token` call does **not** advance `last_sign_in_at`, but it does advance `updated_at` (measured: `10:41:21.094 → 10:41:21.094` vs `10:41:21.095 → 10:41:23.227`). A desktop player who launches daily but never re-authenticates only ever refreshes, so the original predicate would purge them at 90 days. Fix: `greatest(updated_at, last_sign_in_at)` with `created_at` fallbacks.
+
+Everything else checked out: anonymous signup returns 200 (it is a 500 without 0010), the JWT carries `role: authenticated` + `is_anonymous: true`, a guest creates an `auth.users` row and **no** `profiles` row, guest inserts into `levels` / `likes` / `ratings` are refused by RLS, a real signup creates its profile and publishes normally, and a second user claiming a taken username falls back to `player_<uuid>` without the signup failing.
+
+A local-only `web/supabase/seed.sql` was added at the same time: hosted Supabase grants `anon`/`authenticated` table privileges during project bootstrap, the local stack does not. Without it every request fails at the *privilege* layer (`42501 permission denied for table levels`) **before any policy runs** — which cost us a false "guests are correctly blocked ✓" reading, since the guest was blocked by the missing grant rather than by the policy under test.
+
+Scheduling: run `purge_stale_guests()` weekly via pg_cron, using the 0011 version.
 
 ### Consequences
 
