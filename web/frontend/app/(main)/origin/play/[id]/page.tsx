@@ -7,6 +7,7 @@ import { summarizeOriginLevel, type OriginSummary } from "@/lib/origin-summary";
 import { ContextualBackButton } from "@/components/ContextualBackButton";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { RatingWidget } from "@/components/RatingWidget";
+import { OriginPlayFrame } from "@/components/OriginPlayFrame";
 
 type Params = Promise<{ id: string }>;
 
@@ -24,11 +25,12 @@ export async function generateMetadata({ params }: { params: Params }) {
 
 // An Origin level's page on the website.
 //
-// Mirrors /ricochet/play/[id] down to the header card, but where that page
-// mounts a GameFrame this one shows the thumbnail and a readout of the level.
-// Origin is a Godot desktop app with no web export deployed (`games/origin/`
-// holds only devlogs), so there is nothing to put in an iframe — and a Play
-// button that opens a page saying "can't play" would be worse than no button.
+// Mirrors /ricochet/play/[id] down to the header card, plus a readout of the
+// level. Since 2026-08-03 there **is** an Origin web build, so the thumbnail
+// panel doubles as a play button — but the engine is only mounted on click
+// (see OriginPlayFrame): this page's real job is to be a *page* — server
+// rendered title/description/thumbnail that chat apps preview and search
+// engines index — and a canvas can do neither of those.
 //
 // No PublishToggle here either, unlike the Ricochet page: publishing an Origin
 // level is gated on the author having cleared it, and only the desktop client
@@ -111,7 +113,7 @@ export default async function OriginLevelPage({ params }: { params: Params }) {
             read an Origin payload; it would fill this panel with a blank green
             grid that reads as "a level made entirely of grass". */}
         <section className="rounded-3xl border-2 border-ink bg-ink p-2 shadow-[6px_6px_0_0_var(--color-ink)]">
-          <div className="aspect-[5/3] w-full rounded-2xl bg-[#22252c] overflow-hidden grid place-items-center">
+          <OriginPlayFrame levelId={level.id} title={level.title}>
             {level.thumbnailUrl ? (
               <LevelThumbnail
                 thumbnailUrl={level.thumbnailUrl}
@@ -128,17 +130,16 @@ export default async function OriginLevelPage({ params }: { params: Params }) {
                 </p>
               </div>
             )}
-          </div>
+          </OriginPlayFrame>
         </section>
 
         <div className="space-y-4">
           <section className="rounded-3xl border-2 border-ink bg-brand-green p-5 shadow-[6px_6px_0_0_var(--color-ink)]">
             <h2 className="font-display font-bold text-lg mb-2">Play this level</h2>
             <p className="text-sm leading-snug">
-              Origin levels run in the desktop app, not in the browser. Open
-              LevelCraft Origin and find this level by its id{" "}
-              <code className="font-mono font-bold">{level.id}</code>.
-              Downloads aren&apos;t open yet — the{" "}
+              Hit play on the image to run it right here — no install. The
+              desktop app is the full version: it has the editor, your level
+              library and offline play. Downloads aren&apos;t open yet — the{" "}
               <Link href="/devlog" className="font-semibold underline">
                 DevLog
               </Link>{" "}
