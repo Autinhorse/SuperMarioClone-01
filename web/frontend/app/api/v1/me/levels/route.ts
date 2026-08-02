@@ -5,6 +5,7 @@ import { GAME_SLUGS, isGameSlug } from "@/lib/games";
 type LevelRow = {
   id: string;
   title: string;
+  description: string | null;
   status: string;
   game_type: string;
   format_version: number;
@@ -12,6 +13,8 @@ type LevelRow = {
   thumbnail_url: string | null;
   play_count: number;
   like_count: number;
+  rating_sum: number;
+  rating_count: number;
   updated_at: string;
 };
 
@@ -47,7 +50,11 @@ export async function GET(req: Request) {
   let query = ctx.supabase
     .from("levels")
     .select(
-      "id, title, status, game_type, format_version, parent_id, thumbnail_url, play_count, like_count, updated_at",
+      // description + rating aggregates are here for the client's level-detail
+      // panel. Still no `data` — listing never needs the payload (that's
+      // GET /api/v1/levels/{id}), and a library of them would be megabytes.
+      "id, title, description, status, game_type, format_version, parent_id, " +
+        "thumbnail_url, play_count, like_count, rating_sum, rating_count, updated_at",
     )
     .eq("creator_id", ctx.user.id);
   if (gameType !== null) query = query.eq("game_type", gameType);
@@ -55,5 +62,7 @@ export async function GET(req: Request) {
   const { data, error } = await query.order("updated_at", { ascending: false });
 
   if (error) return fail(500, error.message, "server_error");
-  return ok({ levels: (data ?? []) as LevelRow[] });
+  // 拼接出来的 select 字符串会打断 supabase-js 的类型推断（它靠字面量解析列名）
+  // → 和 browse 路由一样经 unknown 转一次。
+  return ok({ levels: (data ?? []) as unknown as LevelRow[] });
 }
