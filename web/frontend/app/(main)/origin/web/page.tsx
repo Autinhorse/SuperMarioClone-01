@@ -49,7 +49,7 @@ export default function OriginWebPage() {
       </div>
 
       <p className="text-sm opacity-70 max-w-2xl">
-        First load pulls about 56&nbsp;MB of engine and assets — it is cached
+        First load pulls about 16&nbsp;MB of engine and assets — it is cached
         afterwards. If nothing appears, your browser needs WebGL&nbsp;2.
       </p>
     </div>
