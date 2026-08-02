@@ -105,14 +105,29 @@ export default async function OriginLevelPage({ params }: { params: Params }) {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 items-start">
         {/* The thumbnail is rendered by the game itself at publish time using
             the same TerrainView the editor draws with, so this really is what
-            the level looks like — not a website-side approximation. */}
+            the level looks like — not a website-side approximation.
+            No PNG (thumbnail rendering is non-fatal on the client) → say so.
+            LevelThumbnail's fallback is Ricochet's SVG renderer, which can't
+            read an Origin payload; it would fill this panel with a blank green
+            grid that reads as "a level made entirely of grass". */}
         <section className="rounded-3xl border-2 border-ink bg-ink p-2 shadow-[6px_6px_0_0_var(--color-ink)]">
           <div className="aspect-[5/3] w-full rounded-2xl bg-[#22252c] overflow-hidden grid place-items-center">
-            <LevelThumbnail
-              thumbnailUrl={level.thumbnailUrl}
-              previewPage={null}
-              alt={level.title}
-            />
+            {level.thumbnailUrl ? (
+              <LevelThumbnail
+                thumbnailUrl={level.thumbnailUrl}
+                previewPage={null}
+                alt={level.title}
+              />
+            ) : (
+              <div className="text-center px-6 py-10">
+                <div className="text-5xl mb-4" aria-hidden>
+                  🗺️
+                </div>
+                <p className="text-sm text-paper/70 max-w-xs mx-auto">
+                  No preview image for this level.
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
