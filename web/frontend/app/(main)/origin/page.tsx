@@ -55,18 +55,25 @@ export default async function OriginHubPage() {
         </div>
       </header>
 
-      {/* The honest bit: you can't play these here yet. Saying so once, up
-          front, beats a Play button that opens a page explaining it can't. */}
+      {/* This block used to say "you can't play these here yet". It can stop
+          saying that: there is a browser build now. Keep it honest about what
+          the browser build is *not* — the desktop app is still the full one. */}
       <section className="rounded-3xl border-2 border-ink bg-brand-green p-5 shadow-[6px_6px_0_0_var(--color-ink)]">
         <h2 className="font-display font-bold text-xl mb-2">
-          Origin runs on your computer
+          Play it right here
         </h2>
-        <p className="text-base leading-snug max-w-2xl">
-          Origin is a desktop app for Windows and macOS — you build levels in
-          its editor and publish them straight from the game. Downloads
-          aren&apos;t open yet; the DevLog is where the build gets announced.
-          Until then this page is the window onto what creators are making.
+        <p className="text-base leading-snug max-w-2xl mb-4">
+          Origin runs in your browser — play community levels and open the
+          editor without installing anything. The desktop app for Windows and
+          macOS is the full version; it isn&apos;t open for download yet, and
+          the DevLog is where that gets announced.
         </p>
+        <Link
+          href="/origin/web"
+          className="inline-block rounded-xl border-2 border-ink bg-paper px-5 py-2 font-display font-bold shadow-[3px_3px_0_0_var(--color-ink)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_var(--color-ink)] transition-transform"
+        >
+          Play in browser
+        </Link>
       </section>
 
       <section>
