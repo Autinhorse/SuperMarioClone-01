@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { v1Context, v1OpenContext, rejectGuest } from "@/lib/api/v1";
 import { ok, fail } from "@/lib/api/respond";
-import { createLevel } from "@/lib/levels/mutations";
+import { createLevel, readDescription } from "@/lib/levels/mutations";
 import {
   applyBrowseSort,
   escapeLikePattern,
@@ -173,6 +173,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     title?: unknown;
     data?: unknown;
+    description?: unknown;
     game_type?: unknown;
     format_version?: unknown;
   } | null;
@@ -195,6 +196,13 @@ export async function POST(req: Request) {
   // link to. Rejecting here is cheaper than discovering it later as a card
   // whose link 404s. Origin is the default because this API exists for the
   // desktop client; browser flows pass their own type explicitly.
+  let description: string | null | undefined;
+  if (body.description !== undefined) {
+    const d = readDescription(body.description);
+    if (!d.ok) return fail(400, d.error, "bad_request");
+    description = d.value;
+  }
+
   const gameType =
     typeof body.game_type === "string" && body.game_type !== ""
       ? body.game_type
@@ -218,6 +226,7 @@ export async function POST(req: Request) {
     gameType,
     title,
     data: body.data,
+    description,
     formatVersion,
   });
   if (!result.ok) return fail(result.status, result.error, "server_error");

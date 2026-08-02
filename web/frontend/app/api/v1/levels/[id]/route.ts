@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { v1Context, v1OpenContext, rejectGuest } from "@/lib/api/v1";
 import { ok, fail, notFoundOrForbidden } from "@/lib/api/respond";
-import { saveLevelData } from "@/lib/levels/mutations";
+import { readDescription, saveLevelData } from "@/lib/levels/mutations";
 import { preparePublish } from "@/lib/levels/publish";
 
 type Params = Promise<{ id: string }>;
@@ -72,13 +72,23 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
 
   const body = (await req.json().catch(() => null)) as {
     title?: unknown;
+    description?: unknown;
     status?: unknown;
   } | null;
-  if (!body || (body.title === undefined && body.status === undefined)) {
-    return fail(400, "Body must include at least one of {title, status}.", "bad_request");
+  if (
+    !body ||
+    (body.title === undefined &&
+      body.description === undefined &&
+      body.status === undefined)
+  ) {
+    return fail(
+      400,
+      "Body must include at least one of {title, description, status}.",
+      "bad_request",
+    );
   }
 
-  const update: { title?: string; status?: Status } = {};
+  const update: { title?: string; description?: string | null; status?: Status } = {};
   if (body.title !== undefined) {
     if (typeof body.title !== "string") {
       return fail(400, "title must be a string.", "bad_request");
@@ -88,6 +98,11 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
       return fail(400, "Title must be 1–100 characters.", "bad_request");
     }
     update.title = trimmed;
+  }
+  if (body.description !== undefined) {
+    const desc = readDescription(body.description);
+    if (!desc.ok) return fail(400, desc.error, "bad_request");
+    update.description = desc.value;
   }
   if (body.status !== undefined) {
     if (typeof body.status !== "string" || !VALID_STATUSES.has(body.status as Status)) {

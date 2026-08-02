@@ -22,6 +22,9 @@ export async function createLevel(
     gameType: string;
     title: string;
     data: unknown;
+    /** Optional author blurb. Travels with the level on the game client
+     *  (LevelData.description), so publishing sends it along with the title. */
+    description?: string | null;
     /** Minimum client generation needed to open this level (ADR-004 §5).
      *  Omitted by the web editor; the game client computes it per level. */
     formatVersion?: number;
@@ -36,6 +39,9 @@ export async function createLevel(
   };
   if (fields.formatVersion !== undefined) {
     row.format_version = fields.formatVersion;
+  }
+  if (fields.description !== undefined) {
+    row.description = fields.description;
   }
 
   const { data, error } = await supabase
@@ -148,4 +154,28 @@ export async function recordCounter(
   const { error } = await supabase.rpc(rpc, { level_text: id });
   if (error) return { ok: false, status: 500, error: error.message };
   return { ok: true, value: {} };
+}
+
+/** Level description cap. The column has no CHECK — it was added before anything
+ *  wrote to it — so the limit lives here, applied identically by POST and PATCH.
+ *  Matches LevelNaming.DESC_MAX on the game client (which caps before sending;
+ *  this is the boundary that actually holds). */
+export const DESCRIPTION_MAX = 500;
+
+/** Normalise an optional description field from a request body.
+ *  Returns the trimmed string, null to clear it, or an error message. */
+export function readDescription(
+  value: unknown,
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (typeof value !== "string") {
+    return { ok: false, error: "description must be a string." };
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > DESCRIPTION_MAX) {
+    return {
+      ok: false,
+      error: `description must be at most ${DESCRIPTION_MAX} characters.`,
+    };
+  }
+  return { ok: true, value: trimmed === "" ? null : trimmed };
 }
