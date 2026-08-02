@@ -157,7 +157,7 @@ Scheduling: run `purge_stale_guests()` weekly via pg_cron, using the 0011 versio
 ## ADR-004: Origin ships desktop-first; the game client talks to a versioned API, not to PostgREST
 
 **Date:** 2026-08-01
-**Status:** Accepted
+**Status:** Accepted — **extended by ADR-005** (Origin also gets a web build; it is the same client, and the website stops being an API consumer). Nothing below is overturned; ADR-005 settles questions this one left open.
 
 ### Context
 
@@ -259,3 +259,78 @@ With the website demoted to a funnel, `levelcraft.gg/origin` ships as level page
 - Rate limiting and abuse controls on `/api/v1/` writes.
 - Whether `format_version` should also gate *browse* results server-side by default or only on request.
 - Steam: whether a Steam session can mint a LevelCraft session (see ADR-003's note on `profiles.steam_id`).
+
+---
+
+## ADR-005: Origin's web build is the same client, not a second one; the website is not an API consumer
+
+**Date:** 2026-08-02
+**Status:** Accepted
+
+### Context
+
+ADR-004 was drawn against a world where Origin was desktop-only, and it rejected "ship Origin as a web game like Ricochet" as a *primary distribution* choice. That rejection stands. What changed is that Origin will also get a **web build, soon**, as a Demo-like subset — so the question is no longer *whether* Origin runs in a browser, but what that build is architecturally.
+
+Four constraints from the founder (2026-08-02), stated as requirements, not preferences:
+
+1. **One login on levelcraft.gg gets you everything.** Signing in twice on the site — worse, ending up with two different accounts — is unacceptable. The technique is free.
+2. **The App is the full feature set**, including accounts and content management. The website is a Demo-like *subset*.
+3. A separate **Demo build of the App** with a reduced feature set will follow.
+4. **Ricochet is an experiment.** Keeping it running is nice-to-have; folding its gameplay into Origin is under consideration. It does not get a vote on this design.
+
+The immediate confusion this ADR resolves: the codebase appeared to have two API families split by game (`/api/levels/*` for Ricochet, `/api/v1/*` for Origin). It does not. The split is by **client shape** — browser-with-cookies vs native-with-bearer — and today that merely *coincides* with the games. Origin's web build breaks the coincidence, and per-game API paths would break with it.
+
+### Decision
+
+**1. Origin's web build is a Godot Web export of the same project, hosted same-origin, calling `/api/v1/*`.**
+
+It is not a second client. The same GDScript — `AccountService`, `LevelApi`, `LevelEditor.publish_level()`, the publish dialog — runs in both. Web and desktop differ in exactly one place: **where the session comes from.** Same-origin means no CORS work on `/api/v1/`.
+
+**2. Single sign-in: the host page injects its session into the WASM.**
+
+The page embedding the build hands the browser's existing Supabase session to the game through JS interop (`JavaScriptBridge`); `AccountService` gains an *inject session* entry point that skips its own mint/login path. Desktop keeps doing what it does today. The website never asks for a second login, and there is exactly one identity per browser.
+
+⚠️ The interop handoff is **not yet verified** — prove it on a real web export before committing UI to it.
+
+**3. The Ricochet model is rejected for Origin.**
+
+Ricochet's shape is "host page holds the session, the game never knows who the user is, level data arrives via `postMessage`". For Origin that would mean reimplementing the publish gate, thumbnail upload, `swappedToId` handling and content management in the host page — while the App, being the superset, must own that logic anyway. Two implementations of the same rules, one of them secondary, guaranteed to drift.
+
+**4. The website is not an API consumer. `/api/v1/*` is the game client's surface, exclusively.**
+
+This is already almost true: every page reads server-side (`lib/{explore,level,profile,homepage,creators,campaign}.ts` all use the server Supabase client). Only two cross-game browser components deviate — `RatingWidget` and `DeleteLevelButton` — and they **move to Server Actions**. The remaining `/api/levels/*` routes are Ricochet-only and live and die with it.
+
+We do **not** make `/api/v1/*` accept cookies. That is the mirror of the alternative ADR-004 already rejected, and it carries three concrete costs: `proxy.ts` deliberately excludes `api/v1` from cookie refresh (an expired session would surface as intermittent 401s that "fix themselves on reload"), cookie-authenticated mutations are CSRF-reachable where bearer ones are not, and `X-Client-Version` is meaningless for a caller that deploys with the server.
+
+**5. The axis is client shape. Per-game API paths are rejected outright.**
+
+Handlers are game-agnostic — `lib/levels/mutations.ts` never reads `game_type`; it is a column value. Splitting to `/api/{game}/levels` yields byte-identical handlers per game, or a path segment no handler reads. It also fights cross-game browse, where `game_type` is a *query parameter*.
+
+**6. `App ⊇ Web` is a standing obligation on `/api/v1/`.**
+
+Anything the website can do, the client must be able to do. Current gaps: `GET /api/v1/levels` (browse/search/sort/page — specified in ADR-004 §2, never built), `rate`, `play`/`clear`, `report`. Client-side, `LevelApi` already has `my_levels`/`unpublish`/`remove` with no UI behind them.
+
+**7. Demo feature-gating is a third dimension. Do not fold it into `UnlockService`.**
+
+`UnlockService` gates *elements* by player tier, and only in the editor. "This build is the Demo" is orthogonal. Sharing one table would make "why can't I see this button" unanswerable — tier, or build?
+
+### Consequences
+
+- ADR-004's "two client shapes" becomes **one client shape for Origin** (bearer, session injected or self-minted) plus the website as a non-API consumer. Ricochet remains the odd one out until it is merged or retired.
+- `/api/v1/` is now on the critical path for the web build too. It can no longer be treated as "the desktop thing".
+- Because the website deploys with the server, it can always move to a future `/api/v2/` immediately; v1 stays frozen for shipped binaries only. Letting the website call v1 would have made v1 undeletable — another reason for decision 4.
+- Godot web export's size and threading cost (ADR-004's reason to reject web as *primary* distribution) now applies to the Demo subset. Budget it as a real constraint, not an afterthought.
+- Two sessions can still exist in one browser (site cookie + a self-minted game session) if decision 2 is implemented incorrectly. That is the failure mode to test for, explicitly.
+
+### Alternatives considered
+
+- **Split the API by game (`/api/origin/*`, `/api/ricochet/*`).** Rejected — see decision 5. The founder proposed it as a legibility fix; the illegibility is real but the cause is that neither family is *named* after what varies, not that games are missing from the path.
+- **Merge everything onto `/api/v1/*` with cookie fallback.** Rejected — see decision 4. Attractive because it yields literally one URL space, but the website already doesn't need URLs.
+- **Rename `/api/levels/*` to `/api/web/*` to name the axis.** Dropped: decision 4 makes those routes Ricochet-only, so the name would document a thing we are removing.
+
+### Not done / future work
+
+- Verifying `JavaScriptBridge` session injection on a real Godot web export.
+- Filling the `/api/v1/` gaps in decision 6, and building the client UI (browse, download, rate, my-levels) that makes `App ⊇ Web` true rather than aspirational.
+- How the Demo build is gated, and whether the gate is compile-time or runtime.
+- Whether Ricochet is merged into Origin or retired; either removes `/api/levels/*` entirely.
