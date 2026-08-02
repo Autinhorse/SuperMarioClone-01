@@ -20,6 +20,8 @@ export type ApiErrorCode =
   | "thumbnail_failed"
   | "self_rate"
   | "not_published"
+  // added with /api/v1/ feedback (rate / report)
+  | "self_report"
   // added with /api/v1/
   | "not_authenticated"
   | "not_found"
