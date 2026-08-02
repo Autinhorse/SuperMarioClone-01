@@ -331,6 +331,7 @@ Anything the website can do, the client must be able to do. Current gaps: `GET /
 ### Not done / future work
 
 - Verifying `JavaScriptBridge` session injection on a real Godot web export.
-- Filling the `/api/v1/` gaps in decision 6, and building the client UI (browse, download, rate, my-levels) that makes `App ⊇ Web` true rather than aspirational.
+- Filling the remaining `/api/v1/` gaps from decision 6 — `rate`, `play`/`clear`, `report`. (`GET /api/v1/levels` shipped 2026-08-02.) And the client UI (browse, download, rate, my-levels) that makes `App ⊇ Web` true rather than aspirational.
+- A "top rated" browse sort. It needs `rating_sum / rating_count` as a generated column — PostgREST cannot order by an expression, and ordering by `rating_sum` alone is popularity wearing a rating's clothes.
 - How the Demo build is gated, and whether the gate is compile-time or runtime.
 - Whether Ricochet is merged into Origin or retired; either removes `/api/levels/*` entirely.

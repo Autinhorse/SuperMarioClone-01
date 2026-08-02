@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { extractPreviewPage, type PreviewPage } from "@/lib/level-preview";
+import { publishedLevels } from "@/lib/levels/browse";
 
 export type HomepageStats = {
   levelsCount: number;
@@ -47,6 +48,9 @@ export type HomepageData = {
   topCreators: TopCreator[];
 };
 
+const HOMEPAGE_SELECT =
+  "id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)";
+
 const DEFAULT_STATS: HomepageStats = {
   levelsCount: 0,
   usersCount: 0,
@@ -78,26 +82,17 @@ export async function getHomepageData(): Promise<HomepageData> {
 
   const [statsRes, featuredRes, latestRes, topRes] = await Promise.all([
     supabase.rpc("homepage_stats"),
-    supabase
-      .from("levels")
-      // Explicit FK name disambiguates the join — there are two paths from
-      // levels to profiles (direct creator FK + m2m via likes).
-      // `parent_id is null` is redundant given the forks_must_be_draft
-      // CHECK + status filter, but spelled out so a reader doesn't have
-      // to chase the constraint to know forks are excluded.
-      .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
-      .eq("status", "published")
-      .is("parent_id", null)
+    // Explicit FK name disambiguates the join — there are two paths from
+    // levels to profiles (direct creator FK + m2m via likes). The
+    // published/not-a-fork predicate is shared with the browse API; see
+    // lib/levels/browse.ts.
+    publishedLevels(supabase, HOMEPAGE_SELECT)
       .eq("is_featured", true)
       .order("published_at", { ascending: false })
       .limit(5),
     // "Latest" — every published level, freshest first. Featured-or-not
     // doesn't matter here; it's the chronological newcomer feed.
-    supabase
-      .from("levels")
-      .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
-      .eq("status", "published")
-      .is("parent_id", null)
+    publishedLevels(supabase, HOMEPAGE_SELECT)
       .order("published_at", { ascending: false })
       .limit(5),
     supabase.rpc("top_creators", { limit_count: 3 }),

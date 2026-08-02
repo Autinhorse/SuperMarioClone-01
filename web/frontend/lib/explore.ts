@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { FeaturedLevel } from "@/lib/homepage";
 import { extractPreviewPage } from "@/lib/level-preview";
+import { publishedLevels } from "@/lib/levels/browse";
 
 type Row = {
   id: string;
@@ -28,13 +29,12 @@ export async function getAllPublishedLevels(
   gameType?: string,
 ): Promise<FeaturedLevel[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("levels")
-    .select("id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)")
-    .eq("status", "published")
-    // forks_must_be_draft + status filter already exclude forks; spelled
-    // out for clarity so a future reader doesn't have to chase the CHECK.
-    .is("parent_id", null);
+  // Same predicate the browse API uses — see lib/levels/browse.ts for why both
+  // conditions are needed even with RLS in place.
+  let query = publishedLevels(
+    supabase,
+    "id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)",
+  );
   if (gameType) query = query.eq("game_type", gameType);
   const { data, error } = await query
     .order("published_at", { ascending: false })
