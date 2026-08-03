@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OriginSession } from "@/components/OriginSession";
 
 /** Play a shared Origin level in the browser, without leaving the level page.
  *
@@ -16,6 +17,10 @@ import { useState } from "react";
  * reads `location.search` itself (`Main.deep_link_level_id`). Nothing is
  * posted in, so the game keeps owning the whole download → play → rate flow
  * exactly as it does when you pick a level inside the app.
+ *
+ * The one thing the host does supply is the session (`OriginSession`), so the
+ * viewer is already signed in inside the game and can rate without a second
+ * login. Anonymous visitors still play fine — plays are counted anonymously.
  */
 export function OriginPlayFrame({
   levelId,
@@ -33,12 +38,14 @@ export function OriginPlayFrame({
       // 16:9 is the game's own viewport shape; the still frame above uses 5:3
       // to match the stored thumbnail, so the box changes shape on start.
       <div className="aspect-video w-full rounded-2xl bg-[#22252c] overflow-hidden">
-        <iframe
-          src={`/origin-web/index.html?level=${encodeURIComponent(levelId)}`}
-          title={title}
-          className="h-full w-full"
-          allow="fullscreen; autoplay; gamepad"
-        />
+        <OriginSession>
+          <iframe
+            src={`/origin-web/index.html?level=${encodeURIComponent(levelId)}`}
+            title={title}
+            className="h-full w-full"
+            allow="fullscreen; autoplay; gamepad"
+          />
+        </OriginSession>
       </div>
     );
   }

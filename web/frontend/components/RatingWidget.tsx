@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { rateLevelAction, unrateLevelAction } from "@/lib/levels/actions";
 
 // 5-star rating widget. State the page passes in is the seed; once the
 // user clicks, we update local state optimistically (server is the
@@ -54,15 +55,9 @@ export function RatingWidget({
     try {
       if (value === null) {
         // Clear path.
-        const res = await fetch(
-          `/api/levels/${encodeURIComponent(levelId)}/rate`,
-          { method: "DELETE" },
-        );
+        const res = await unrateLevelAction(levelId);
         if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          setError(body.error ?? `HTTP ${res.status}`);
+          setError(res.error);
           return;
         }
         if (viewerRating !== null) {
@@ -72,19 +67,9 @@ export function RatingWidget({
         setViewerRating(null);
         return;
       }
-      const res = await fetch(
-        `/api/levels/${encodeURIComponent(levelId)}/rate`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ value }),
-        },
-      );
+      const res = await rateLevelAction(levelId, value);
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setError(body.error ?? `HTTP ${res.status}`);
+        setError(res.error);
         return;
       }
       // Optimistic update of the aggregates so the next render reflects

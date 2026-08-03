@@ -328,9 +328,23 @@ Anything the website can do, the client must be able to do. Current gaps: `GET /
 - **Merge everything onto `/api/v1/*` with cookie fallback.** Rejected — see decision 4. Attractive because it yields literally one URL space, but the website already doesn't need URLs.
 - **Rename `/api/levels/*` to `/api/web/*` to name the axis.** Dropped: decision 4 makes those routes Ricochet-only, so the name would document a thing we are removing.
 
+### Addendum (2026-08-03): the injected session is an access token only
+
+Decision 2 said "the page hands the browser's existing Supabase session to the game" without saying *which parts* of it. Implementing it forced the question, and the answer is narrower than it sounds: **the host injects the access token and nothing else. It never injects the refresh token.**
+
+Supabase rotates refresh tokens — spending one invalidates the copy you didn't spend. If the host page's supabase-js and the game's `AccountService.refresh()` each held one, they would race about an hour in and knock each other out, surfacing to the player as "I was in the middle of a level and it signed me out". Nothing in the client could fix that, because both sides are behaving correctly.
+
+So the split is:
+
+- **Refreshing belongs to the host page, exclusively.** supabase-js already does it on a timer and writes the cookie.
+- **The game pulls, it does not receive.** The host exposes `window.__lcSession()` returning `{access_token, expires_at, user}` or `null`; the game reads it on demand. Pull beats push here for two reasons: `AccountService` is a static-coroutine class (GDScript signals are instance members, so a static class cannot declare one), and token expiry then costs nothing — "ask again" is the same line of code as "ask the first time". No invalidation message, no mailbox, no ready state.
+- **`AccountService` on web never mints and never persists.** `ensure_session()` asks the host instead of minting a guest, `_ensure_loaded()` skips `user://settings.cfg` entirely, and `_save()` early-returns. That last one is what actually closes the failure mode this ADR's Consequences section named: `user://` on the web is IndexedDB and survives across sessions, so a guest token minted by an earlier build would otherwise still be sitting there waiting to become a second identity.
+
+Implementation: `components/OriginSession.tsx` (host) ↔ `runtime/net/host_session.gd` (game). The accessor name is the contract between the two repos. Covered by `test/m83_host_session_smoke.gd`, which injects a fake host so the web path runs headless.
+
 ### Not done / future work
 
-- Verifying `JavaScriptBridge` session injection on a real Godot web export.
+- ~~Verifying `JavaScriptBridge` session injection on a real Godot web export.~~ Implemented 2026-08-03 (see addendum); still to be exercised end-to-end against a deployed build.
 - Filling the remaining `/api/v1/` gaps from decision 6 — `rate`, `play`/`clear`, `report`. (`GET /api/v1/levels` shipped 2026-08-02.) And the client UI (browse, download, rate, my-levels) that makes `App ⊇ Web` true rather than aspirational.
 - A "top rated" browse sort. It needs `rating_sum / rating_count` as a generated column — PostgREST cannot order by an expression, and ordering by `rating_sum` alone is popularity wearing a rating's clothes.
 - How the Demo build is gated, and whether the gate is compile-time or runtime.

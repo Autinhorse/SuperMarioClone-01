@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { deleteLevelAction } from "@/lib/levels/actions";
 
 // Trash-icon button overlaid on a level card on the profile page.
 // Confirmation modal guards the destructive action; on success the
@@ -33,12 +34,9 @@ export function DeleteLevelButton({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/levels/${encodeURIComponent(levelId)}`, {
-        method: "DELETE",
-      });
+      const res = await deleteLevelAction(levelId);
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? `HTTP ${res.status}`);
+        setError(res.error);
         return;
       }
       setOpen(false);

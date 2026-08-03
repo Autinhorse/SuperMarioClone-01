@@ -52,6 +52,16 @@ export default async function OriginHubPage() {
           >
             ✦ All levels
           </Link>
+          {/* Straight into the editor, same slot and styling as /ricochet's
+              Build button. Nothing to install and no sign-in wall: you can
+              build and test-play anonymously — an account is only needed to
+              publish, which is where the game asks for one. */}
+          <Link
+            href="/origin/web?mode=edit"
+            className="px-4 h-10 rounded-full border-2 border-ink bg-brand-yellow font-display font-semibold text-sm flex items-center gap-2 shadow-[3px_3px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"
+          >
+            ✏️ Build your own
+          </Link>
         </div>
       </header>
 

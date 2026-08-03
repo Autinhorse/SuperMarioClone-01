@@ -15,12 +15,18 @@ export type GameInfo = {
   name: string;
   tagline: string;
   /** Can a level of this game be played right here in the browser?
-   *  Ricochet ships a Phaser build under /public/games; Origin is a Godot
-   *  desktop app with no web export deployed yet, so its level pages show
-   *  the thumbnail and metadata instead of a game frame. */
+   *  Ricochet ships a Phaser build under /public/games; Origin ships a Godot
+   *  Web export under /public/origin-web (since 2026-08-03), mounted on click
+   *  by `OriginPlayFrame` so the level page still renders as a page first. */
   playableInBrowser: boolean;
-  /** Can levels be authored on the website? Origin levels are built in the
-   *  desktop editor and pushed up via the v1 API — there is no web editor. */
+  /** Does this game have an **editor route on the website** (`/{game}/edit/{id}`)?
+   *
+   *  False for Origin, and deliberately so — not a missing feature. Origin's
+   *  web build is the same client as the desktop one and owns its own editor,
+   *  publish dialog and level library (ADR-005 decision 3); reimplementing any
+   *  of that as React pages would be the second implementation that ADR exists
+   *  to prevent. Origin authors edit inside the game, reached via
+   *  `/origin/web?mode=edit`. */
   editableInBrowser: boolean;
 };
 
@@ -36,9 +42,9 @@ export const GAMES: Record<GameSlug, GameInfo> = {
     slug: "origin",
     name: "LevelCraft Origin",
     tagline:
-      "A 2D platformer creation engine. Build levels in the desktop editor, publish them here.",
-    playableInBrowser: false,
-    editableInBrowser: false,
+      "A 2D platformer creation engine. Play and build right in the browser, or get the desktop app for the full version.",
+    playableInBrowser: true,
+    editableInBrowser: false, // by design — see the field comment
   },
 };
 
