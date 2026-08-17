@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { OriginSession } from "@/components/OriginSession";
+import { OriginHostNav } from "@/components/OriginHostNav";
 
 export const metadata: Metadata = {
   title: "Play Origin in your browser — LevelCraft",
@@ -29,13 +30,19 @@ export const metadata: Metadata = {
 export default async function OriginWebPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; arcade?: string }>;
 }) {
-  const { mode } = await searchParams;
-  // Whitelist rather than forward: the query string is user input, and the
-  // build only understands this one value.
-  const src =
-    mode === "edit" ? "/origin-web/index.html?mode=edit" : "/origin-web/index.html";
+  const { mode, arcade } = await searchParams;
+  // Whitelist rather than forward — the query string is user input.
+  //
+  // `arcade` can't be enumerated (there will be 100+ slugs), so it's sanitised
+  // to the character class a slug is allowed to use instead. The game does the
+  // same check again on its side and just shows its front page for a slug it
+  // doesn't recognise, so a bogus value is harmless either way.
+  const slug = (arcade ?? "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  let src = "/origin-web/index.html";
+  if (mode === "edit") src += "?mode=edit";
+  else if (slug) src += `?arcade=${encodeURIComponent(slug)}`;
 
   // The sign-in sentence has to match reality. Claiming "you're already signed
   // in" at an anonymous visitor is worse than saying nothing: it reads as a bug
@@ -45,12 +52,22 @@ export default async function OriginWebPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Where "back" goes — for the in-game exit (OriginHostNav) and for the link
+  // in the header. An arcade launch came from the arcade page; anything else
+  // came from the Origin hub.
+  const backHref = slug ? "/origin/arcade" : "/origin";
+  const backLabel = slug ? "← Back to Arcade" : "← Back to Origin";
+
   return (
     <div className="px-4 pt-6 space-y-4">
+      <OriginHostNav backHref={backHref} />
       <header className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <h1 className="font-display font-bold text-2xl">Origin — in your browser</h1>
-        <Link href="/origin" className="underline underline-offset-2 text-sm">
-          back to Origin
+        {/* Always present, outside the canvas. The in-game exit needs the game
+            to be running and to have booted far enough to call out; this link
+            works even if the wasm never loads. */}
+        <Link href={backHref} className="underline underline-offset-2 text-sm">
+          {backLabel}
         </Link>
       </header>
 

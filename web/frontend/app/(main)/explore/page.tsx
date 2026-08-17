@@ -11,7 +11,11 @@ export const metadata = {
 };
 
 export default async function ExplorePage() {
-  const levels = await getAllPublishedLevels(50);
+  // Origin only. Ricochet is being retired (2026-08-04): its routes stay
+  // reachable by direct link so anything already shared keeps working, but it
+  // is off every listing and every count. Passing the filter here rather than
+  // dropping the rows server-side keeps that reversible — one argument.
+  const levels = await getAllPublishedLevels(50, "origin");
 
   return (
     <div className="px-6 lg:px-10 mt-10 space-y-6">

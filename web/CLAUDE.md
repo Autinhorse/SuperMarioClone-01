@@ -38,6 +38,33 @@ levelcraft.gg/origin                    Origin hub (what it is + published level
 levelcraft.gg/origin/play/{level_id}    Level page (thumbnail + readout, see below)
 ```
 
+**2026-08-04 — levelcraft.gg is Origin's site.** Ricochet is being retired: its
+routes still resolve so already-shared links keep working, but nothing links to
+it, it is filtered out of `/explore`, and the homepage no longer mentions it.
+The homepage is now banner + the same three doors the game opens with — Arcade /
+My Levels / World Levels (`components/HomeColumns.tsx`), using the game's own
+button art copied into `public/origin/`.
+
+**Arcade** (`/origin/arcade`, `lib/arcade.ts`) is the levels that ship *inside*
+the build. **The level data is never on the website** — pressing Play goes to
+`/origin/web?arcade=<slug>`, the game reads the slug and loads from `res://`:
+zero download, works offline, version always matches. The site only holds the
+catalog, generated in the game repo by `test/tools/make_arcade_bundle.gd` into
+`data/arcade-catalog.json` + `public/origin-arcade/<slug>.png`. **Don't hand-edit
+either** — add the level to `ui/arcade/arcade_catalog.tres`, re-run the tool, copy.
+
+Two accessors the host installs for the embedded game (names are the contract
+with the game repo): **`window.__lcSession`** hands over the signed-in session
+(`OriginSession`), **`window.__lcExit`** lets the game hand navigation back
+(`OriginHostNav`). A deep-linked player never saw the game's own front page, so
+its "back" must return to the web page they came from rather than dropping them
+into the app's parallel navigation. Every embed also carries a plain link
+outside the canvas, which works even if the wasm never loads.
+
+> ⚠️ `LevelThumbnail`'s fallback is Ricochet's SVG renderer and **cannot read an
+> Origin payload** — it paints a blank green grid that reads as a broken image.
+> Only mount it when `thumbnailUrl` is set; otherwise render your own placeholder.
+
 **Decisions:**
 - Subdirectory (`/ricochet`), NOT subdomain. Better for SEO and brand cohesion.
 - Game name in URL — URLs are self-documenting.
