@@ -157,7 +157,7 @@ Scheduling: run `purge_stale_guests()` weekly via pg_cron, using the 0011 versio
 ## ADR-004: Origin ships desktop-first; the game client talks to a versioned API, not to PostgREST
 
 **Date:** 2026-08-01
-**Status:** Accepted — **extended by ADR-005** (Origin also gets a web build; it is the same client, and the website stops being an API consumer). Nothing below is overturned; ADR-005 settles questions this one left open.
+**Status:** Accepted — **extended by ADR-005** (Origin also gets a web build; it is the same client, and the website stops being an API consumer) and **refined by ADR-006** (§6's sync block loses `local_updated_at`; conflict detection compares a stored base version, not two clocks). Nothing below is overturned; both settle questions this one left open.
 
 ### Context
 
@@ -349,3 +349,63 @@ Implementation: `components/OriginSession.tsx` (host) ↔ `runtime/net/host_sess
 - A "top rated" browse sort. It needs `rating_sum / rating_count` as a generated column — PostgREST cannot order by an expression, and ordering by `rating_sum` alone is popularity wearing a rating's clothes.
 - How the Demo build is gated, and whether the gate is compile-time or runtime.
 - Whether Ricochet is merged into Origin or retired; either removes `/api/levels/*` entirely.
+
+---
+
+## ADR-006: Level sync compares a base version, not two clocks; conflicts ask rather than pick
+
+**Date:** 2026-08-17
+**Status:** Accepted — **refines ADR-004 §6**, which stands. Same stance on conflicts; this pins down the mechanism and drops one field from its sync block. Design only; not yet implemented.
+
+### Context
+
+The Origin homepage now has a My Levels column that is supposed to lead to a level page with **Play and Edit** (`docs/origin-main-site-plan.md`). Edit is the problem: a level can exist twice — locally (`user://*.lvl` on desktop, IndexedDB in the browser) and in `levels.data` on the server. Opening one has to decide which copy wins.
+
+The game has been dodging this. `ui/my_levels_page.gd` deliberately offers only view / play / unpublish / delete for cloud levels, with no Edit, precisely because nobody had implemented an answer. The website asking for the button forces it.
+
+**ADR-004 §6 already got the stance right** — "conflicts are resolved by the user, never automatically", triggered when "`remote_updated_at` moved since the client last saw it". Nothing here overturns that. What was still open is the mechanism, and its sync block `{remote_id, remote_updated_at, local_updated_at, published}` carries a field that quietly invites the wrong one: with a `local_updated_at` sitting next to a remote timestamp, the natural implementation is to compare the two and take the larger. That is the proposal that prompted this ADR, and it is the thing being ruled out.
+
+### Decision
+
+**1. Compare "which server version was this derived from", not "which timestamp is larger".**
+The client stores the `updated_at` the server returned on the last pull or push (`base`) and later compares it for **string equality** with the server's current `updated_at`. **`local_updated_at` leaves the sync block**; "has the user touched this since the last sync" is a boolean (`dirty`), not a time.
+
+Comparing timestamps requires two comparable clocks. A player's machine clock being hours off is ordinary (timezone, never synced, set by hand), and when it is off the comparison does not fail randomly — it **systematically picks the same wrong side every time, silently**. The web build has no fallback either: levels live in IndexedDB, where Godot's `FileAccess.get_modified_time()` is not dependable. Equality against a server-issued token removes clocks from the problem entirely.
+
+**2. Three cases, fully separated.**
+
+| Local dirty? | `base` == server `updated_at`? | Action |
+|---|---|---|
+| no | — | pull the server copy (local was only a cache) |
+| yes | yes | local is built on the current version → push, **no conflict** |
+| yes | no | both sides changed → **ask the user** |
+
+Only the third row involves a human; the other two are automatic.
+
+**3. A real conflict asks; it never picks.**
+Auto-selecting "the newer one" in row three deletes the other side's work silently — and that row is the one case that deserves a word. It is a single `if`. The choices are ADR-004 §6's: overwrite / discard local / save as a new level.
+
+**4. Conflict resolution stops at that prompt.**
+No three-way merge, no per-cell diff, and no *automatic* conflict copy — "save as a new level" is offered in the prompt and taken deliberately, which is not the same as the client growing a level nobody asked for. Editing's main venue is the app (fuller feature set, and what we recommend); web editing is the supplement. Both sides diverging requires one account editing the same level in two places without syncing in between — rare, and self-inflicted. Growing unrequested levels in someone's list to protect against it is a worse trade than the prompt.
+
+**5. Offline is not a separate path.**
+`base` persists, offline edits save normally, and reconnecting runs the same table. Offline is just "no server `updated_at` available" → use local, decide nothing.
+
+### Consequences
+
+- **The server likely needs no change**: `levels.updated_at` exists and both `GET /api/v1/levels/[id]` and `/api/v1/me/levels` already return it.
+- Client-side this is two keys on the existing per-level `publish_info` dictionary (`base`, `dirty`) plus one comparison at open time. The "is it dirty" hook already exists — `LevelEditor._on_doc_changed`, which today clears `cleared`.
+- Optional hardening, not required to ship: send `base` with the upload so the server can reject a stale write. The client gate only tells the user earlier; **the server stays authoritative**.
+- We accept losing one side's edits when a user picks at the prompt. That is a choice they made with the facts in front of them, which is the distinction this ADR is drawing.
+
+### Alternatives considered
+
+- **Last-write-wins on client clocks** — the proposal that started this. Rejected: see decision 1. Cheap only until a clock is wrong, and then wrong invisibly.
+- **Server-side `updated_at` comparison with the client sending its own timestamp** — same clock problem, moved one hop.
+- **No web editing at all** (keep the app's current stance) — consistent and free, but leaves the homepage's My Levels column permanently short of the plan.
+- **Full offline sync (operation log, CRDT)** — solves conflicts properly and costs more than the whole feature is worth at current usage.
+
+### Not done / future work
+
+- Implementation on both sides; game-repo design lives at `docs/level/sync.md` (planning doc).
+- Deciding whether the web editor's working copy is IndexedDB-backed or memory-only. Related but separable: `user://` in the browser is per-browser, so a level created on the web and never published is invisible everywhere else.
