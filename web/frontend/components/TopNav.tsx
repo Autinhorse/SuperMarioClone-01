@@ -2,8 +2,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
+// The first three are the homepage's three doors, in the order the game's own
+// front page uses them (2026-08-17).
+//
+// **World Levels is `/explore`.** The label changed, the URL did not: /explore
+// is already linked from other pages and may be in someone's bookmarks, and a
+// rename buys nothing a label change doesn't. So the path stays honest-but-old
+// and every user-visible string says World Levels.
+//
+// **My Levels** (`/origin/my-levels`, 2026-09-03) needs an account — signed-out
+// visitors clicking it bounce through `/login?next=/origin/my-levels` and land
+// back here, same as every other account-gated route on the site.
 const navLinks: { label: string; href: string; external?: boolean }[] = [
-  { label: "Explore", href: "/explore" },
+  { label: "Arcade", href: "/origin/arcade" },
+  { label: "My Levels", href: "/origin/my-levels" },
+  { label: "World Levels", href: "/explore" },
   { label: "DevLog", href: "/devlog" },
   { label: "About", href: "/about" },
   { label: "Discord", href: "https://discord.gg/prAuYMsBvc", external: true },

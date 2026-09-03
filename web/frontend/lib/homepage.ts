@@ -1,14 +1,20 @@
-import { createClient } from "@/lib/supabase/server";
-import { extractPreviewPage, type PreviewPage } from "@/lib/level-preview";
-import { publishedLevels } from "@/lib/levels/browse";
+import { type PreviewPage } from "@/lib/level-preview";
 
-export type HomepageStats = {
-  levelsCount: number;
-  usersCount: number;
-  totalPlays: number;
-  dailyCreators: number;
-};
-
+/**
+ * The shared "level card" row shape.
+ *
+ * Named for the homepage because that's where it started, and left here because
+ * `lib/explore.ts` and every card component import it from this path — moving it
+ * would be churn in three files for a better filename.
+ *
+ * The homepage's own data function is **gone** (2026-08-17). It ran four queries
+ * — `homepage_stats`, featured, latest, `top_creators` — for a page that now
+ * renders one list, and all four counted Ricochet. The surviving list is fetched
+ * with `getAllPublishedLevels(3, "origin")`, the same function `/explore` uses;
+ * two functions issuing the same query against the same table was how the
+ * filter-after-limit bug got in. The stats strip / featured row / top-creators
+ * components went with it.
+ */
 export type FeaturedLevel = {
   id: string;
   /** Which game this level belongs to. Drives the card's href — levels from
@@ -32,117 +38,3 @@ export type FeaturedLevel = {
    *  back to the inline SVG. */
   thumbnailUrl: string | null;
 };
-
-export type TopCreator = {
-  username: string;
-  totalPlays: number;
-  levelCount: number;
-};
-
-export type HomepageData = {
-  stats: HomepageStats;
-  featured: FeaturedLevel[];
-  /** Most-recently-published levels regardless of featured flag.
-   *  Same row shape as `featured` so the card UI can be reused. */
-  latest: FeaturedLevel[];
-  topCreators: TopCreator[];
-};
-
-const HOMEPAGE_SELECT =
-  "id, game_type, title, like_count, play_count, rating_sum, rating_count, data, thumbnail_url, profiles!levels_creator_id_fkey(username)";
-
-const DEFAULT_STATS: HomepageStats = {
-  levelsCount: 0,
-  usersCount: 0,
-  totalPlays: 0,
-  dailyCreators: 0,
-};
-
-type FeaturedRow = {
-  id: string;
-  game_type: string;
-  title: string;
-  like_count: number;
-  play_count: number;
-  rating_sum: number;
-  rating_count: number;
-  data: unknown;
-  thumbnail_url: string | null;
-  profiles: { username: string } | { username: string }[] | null;
-};
-
-type TopCreatorRow = {
-  username: string;
-  total_plays: number;
-  level_count: number;
-};
-
-export async function getHomepageData(): Promise<HomepageData> {
-  const supabase = await createClient();
-
-  const [statsRes, featuredRes, latestRes, topRes] = await Promise.all([
-    supabase.rpc("homepage_stats"),
-    // Explicit FK name disambiguates the join — there are two paths from
-    // levels to profiles (direct creator FK + m2m via likes). The
-    // published/not-a-fork predicate is shared with the browse API; see
-    // lib/levels/browse.ts.
-    publishedLevels(supabase, HOMEPAGE_SELECT)
-      .eq("is_featured", true)
-      .order("published_at", { ascending: false })
-      .limit(5),
-    // "Latest" — every published level, freshest first. Featured-or-not
-    // doesn't matter here; it's the chronological newcomer feed.
-    publishedLevels(supabase, HOMEPAGE_SELECT)
-      .order("published_at", { ascending: false })
-      .limit(5),
-    supabase.rpc("top_creators", { limit_count: 3 }),
-  ]);
-
-  // Surface query errors to the dev log — without this they're swallowed
-  // and the four lists silently come back empty (e.g. a missing column
-  // makes the whole select fail, which looks identical to "no levels").
-  for (const [name, res] of [
-    ["homepage_stats", statsRes],
-    ["featured", featuredRes],
-    ["latest", latestRes],
-    ["top_creators", topRes],
-  ] as const) {
-    if (res.error) console.error(`[homepage ${name}]`, res.error.message);
-  }
-
-  const statsData = statsRes.data as Record<string, number> | null;
-  const stats: HomepageStats = statsData
-    ? {
-        levelsCount: Number(statsData.levels_count ?? 0),
-        usersCount: Number(statsData.users_count ?? 0),
-        totalPlays: Number(statsData.total_plays ?? 0),
-        dailyCreators: Number(statsData.daily_creators ?? 0),
-      }
-    : DEFAULT_STATS;
-
-  const mapRow = (row: FeaturedRow): FeaturedLevel => {
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    return {
-      id: row.id,
-      gameType: row.game_type,
-      title: row.title,
-      creatorUsername: profile?.username ?? null,
-      likeCount: row.like_count,
-      playCount: row.play_count,
-      ratingSum: row.rating_sum,
-      ratingCount: row.rating_count,
-      previewPage: extractPreviewPage(row.data),
-      thumbnailUrl: row.thumbnail_url,
-    };
-  };
-  const featured: FeaturedLevel[] = ((featuredRes.data as FeaturedRow[] | null) ?? []).map(mapRow);
-  const latest: FeaturedLevel[] = ((latestRes.data as FeaturedRow[] | null) ?? []).map(mapRow);
-
-  const topCreators: TopCreator[] = ((topRes.data as TopCreatorRow[] | null) ?? []).map((row) => ({
-    username: row.username,
-    totalPlays: Number(row.total_plays),
-    levelCount: Number(row.level_count),
-  }));
-
-  return { stats, featured, latest, topCreators };
-}

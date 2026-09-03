@@ -345,7 +345,7 @@ function LinksFooter() {
             href="/explore"
             className="block rounded-2xl border-2 border-ink bg-brand-yellow p-4 shadow-[2px_2px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"
           >
-            <div className="font-display font-bold text-base">Explore →</div>
+            <div className="font-display font-bold text-base">World Levels →</div>
             <div className="text-xs text-ink/70 mt-0.5">
               Play community levels
             </div>

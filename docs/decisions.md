@@ -407,5 +407,6 @@ No three-way merge, no per-cell diff, and no *automatic* conflict copy — "save
 
 ### Not done / future work
 
-- Implementation on both sides; game-repo design lives at `docs/level/sync.md` (planning doc).
+- Implementation on both sides; game-repo design lives at `docs/level/sync.md` (planning doc). Game-side `base`/`dirty` bookkeeping landed 2026-09-03 (push path only — see that doc).
+- **2026-09-03: `/origin/my-levels` shipped** (published + draft levels, reusing the profile page's `LevelGrid`/`getProfileLevels`) — the "My Levels" entry point this ADR assumed would exist. It does not yet add a per-level Edit link: `lib/games.ts`'s `editableInBrowser: false` for Origin is still accurate, because `?mode=edit` on `/origin/web` ignores any level id (`Main._ready()` checks `deep_link_mode() == "edit"` before it ever looks at `?level=`). Wiring `?mode=edit&level=<id>` through — on both the website and the game — is the next step, and is what would let this ADR's compare-and-conflict flow actually run.
 - Deciding whether the web editor's working copy is IndexedDB-backed or memory-only. Related but separable: `user://` in the browser is per-browser, so a level created on the web and never published is invisible everywhere else.

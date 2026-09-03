@@ -52,16 +52,17 @@ export function HomeColumns({ worldLevels }: { worldLevels: FeaturedLevel[] }) {
         icon="/origin/btn-mylevels.png"
         title="My Levels"
         blurb="Everything you've built. Edit, publish, or start something new."
-        moreHref="/origin/web?mode=edit"
-        moreLabel="Open editor"
+        moreHref="/origin/my-levels"
       >
-        {/* Your own levels live in the game (browser storage or your account),
-            not in a table this page can read without knowing who you are.
-            Rather than render an empty shell for signed-out visitors, this
-            column stays an invitation and hands off to the app. */}
+        {/* No preview rows here (unlike Arcade/World Levels): "your levels"
+            needs to know who you are, and this column renders for signed-out
+            visitors too. Querying per-viewer content would mean this whole
+            section (and the page around it) stops being static — not worth it
+            for three preview rows. `/origin/my-levels` itself does the real
+            query and sends a signed-out click through login first. */}
         <p className="text-sm text-ink/70 px-1 py-2">
-          Build a level in the browser — it opens straight into the editor, and
-          you can publish it when you&apos;re happy with it.
+          See your published levels and drafts, or build a new one in the
+          browser — it opens straight into the editor.
         </p>
       </Column>
 

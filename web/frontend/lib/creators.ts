@@ -23,7 +23,10 @@ type Row = {
 };
 
 // All creators with at least one published level, sorted by total plays.
-// Powers the /creators page; InfoRow's "See All Creators" link lands here.
+// Powers the /creators page. Nothing links there any more — the homepage row
+// that did (`InfoRow`) was deleted with the Ricochet-era homepage on
+// 2026-08-17; the page itself still works by direct URL. Counts are
+// cross-game, so it also over-reports now.
 export async function getAllCreators(): Promise<CreatorRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("all_creators");

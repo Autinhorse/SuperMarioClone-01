@@ -5,8 +5,12 @@ import { gameInfo, levelHref } from "@/lib/games";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { RatingDisplay } from "@/components/RatingWidget";
 
+// The page is called **World Levels** everywhere a user can see it — it's the
+// third of the three doors the game and the homepage open with. The route stays
+// `/explore`: it's linked from other pages and may be bookmarked, and renaming
+// the path buys nothing the label doesn't (2026-08-17).
 export const metadata = {
-  title: "Explore Levels — LevelCraft",
+  title: "World Levels — LevelCraft",
   description: "Browse every published level the community has built.",
 };
 
@@ -22,7 +26,7 @@ export default async function ExplorePage() {
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-display font-bold text-3xl flex items-center gap-2">
-            <span aria-hidden>✦</span> Explore Levels
+            <span aria-hidden>✦</span> World Levels
           </h1>
           <p className="text-sm text-ink/70 mt-1">
             Every published level, freshest first.

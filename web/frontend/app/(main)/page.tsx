@@ -1,6 +1,6 @@
 import { OriginHero } from "@/components/OriginHero";
 import { HomeColumns } from "@/components/HomeColumns";
-import { getHomepageData } from "@/lib/homepage";
+import { getAllPublishedLevels } from "@/lib/explore";
 
 // levelcraft.gg is Origin's site (2026-08-04).
 //
@@ -13,12 +13,12 @@ import { getHomepageData } from "@/lib/homepage";
 // My Levels, World Levels. Fewer rows, each showing real content, and the shape
 // matches the app so the two read as one product.
 export default async function Home() {
-  // Only the "latest published" list survives from the old homepage query; it
-  // feeds the World Levels column. The stats / featured / top-creators RPCs are
-  // no longer called here — they count Ricochet too, and there is nowhere left
-  // on this page to show them.
-  const { latest } = await getHomepageData();
-  const worldLevels = latest.filter((l) => l.gameType === "origin");
+  // ⚠️ Filter in the query, not after it. The old homepage fetched the newest 5
+  // levels across all games and this page filtered to Origin afterwards — so a
+  // run of recent Ricochet levels could push every Origin level out of the
+  // window and render "nothing published yet" while Origin levels existed.
+  // Filter-then-limit is the only order that can't lie.
+  const worldLevels = await getAllPublishedLevels(3, "origin");
 
   return (
     <>

@@ -52,18 +52,28 @@ export async function getProfile(username: string): Promise<Profile | null> {
  * - Otherwise: returns only published levels
  *
  * The same query body, different results — the database handles authorization.
+ *
+ * `gameType` narrows to one game — same convention as `getAllPublishedLevels`
+ * (`lib/explore.ts`). Omit it for the cross-game profile page; Origin's
+ * `/origin/my-levels` passes `"origin"` so a Ricochet draft doesn't show up on
+ * a page whose header, empty states and "Build new" button are all Origin's.
  */
-export async function getProfileLevels(creatorId: string): Promise<ProfileLevel[]> {
+export async function getProfileLevels(
+  creatorId: string,
+  gameType?: string,
+): Promise<ProfileLevel[]> {
   const supabase = await createClient();
   // Self-join on parent_id pulls the parent row's title in one query —
   // null when this row isn't a fork. The relationship name `parent` is
   // the column name; supabase-js infers the join from the FK.
-  const { data } = await supabase
+  let query = supabase
     .from("levels")
     .select(
       "id, game_type, title, status, is_featured, like_count, play_count, rating_sum, rating_count, published_at, created_at, data, thumbnail_url, parent_id, parent:parent_id(title)",
     )
-    .eq("creator_id", creatorId)
+    .eq("creator_id", creatorId);
+  if (gameType) query = query.eq("game_type", gameType);
+  const { data } = await query
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 

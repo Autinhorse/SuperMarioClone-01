@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getProfile, getProfileLevels, type ProfileLevel } from "@/lib/profile";
+import { getProfile, getProfileLevels } from "@/lib/profile";
 import { formatCount, formatJoinDate } from "@/lib/format";
-import { editHref, levelHref } from "@/lib/games";
-import { LevelThumbnail } from "@/components/LevelThumbnail";
-import { RatingDisplay } from "@/components/RatingWidget";
-import { DeleteLevelButton } from "@/components/DeleteLevelButton";
+import { LevelGrid } from "@/components/LevelGrid";
 
 type Params = Promise<{ username: string }>;
 
@@ -53,8 +50,12 @@ export default async function ProfilePage({ params }: { params: Params }) {
           </div>
         </div>
         {isOwner && (
+          // ⚠️ Was `/ricochet/create`, which **never existed** — no such route
+          // is defined, so this button and the empty-state one below were both
+          // 404s (2026-08-17). Now Origin's editor, which is where building
+          // happens.
           <Link
-            href="/ricochet/create"
+            href="/origin/web?mode=edit"
             className="px-5 h-11 rounded-full border-2 border-ink bg-brand-yellow font-display font-semibold flex items-center gap-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition shrink-0"
           >
             ✏️ Build Level
@@ -114,101 +115,11 @@ function Stat({
   );
 }
 
-function LevelGrid({
-  levels,
-  showDraftBadge = false,
-  showDelete = false,
-}: {
-  levels: ProfileLevel[];
-  showDraftBadge?: boolean;
-  showDelete?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {levels.map((level) => (
-        <Link
-          key={level.id}
-          // Drafts (only shown to the owner) go straight to the editor
-          // — the play page would just be an extra click before the
-          // owner reaches the only useful action they have for an
-          // unpublished level. Published levels keep the play landing.
-          //
-          // Both hrefs are per-game (lib/games.ts). Origin has no web editor,
-          // so `editHref` comes back null there and even a draft falls through
-          // to its level page — which is the only thing the website can show
-          // for a level whose editor lives on the author's desktop.
-          href={
-            (showDraftBadge ? editHref(level.gameType, level.id) : null) ??
-            levelHref(level.gameType, level.id) ??
-            "/explore"
-          }
-          className="rounded-2xl border-2 border-ink bg-white p-2 shadow-[4px_4px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition block relative"
-        >
-          {/* Top-left badge: Draft / Edit (drafts only) or featured star
-              (published+featured). Mutually exclusive — drafts can't be
-              featured. Top-right is reserved for the delete button when
-              the viewer owns the level. Forks show "Edit" instead of
-              "Draft" so they're visually distinguishable from fresh
-              drafts (both share the same title text). */}
-          {showDraftBadge ? (
-            <span className="absolute top-1 left-1 z-10 px-2 py-0.5 rounded-md border-2 border-ink bg-paper text-[10px] font-display font-bold uppercase tracking-wide">
-              {level.parentId ? "Edit" : "Draft"}
-            </span>
-          ) : level.isFeatured ? (
-            <span className="absolute top-1 left-1 z-10 size-11 rounded-full border-2 border-ink bg-brand-yellow grid place-items-center text-base">
-              ⭐
-            </span>
-          ) : null}
-          {showDelete && (
-            <DeleteLevelButton levelId={level.id} levelTitle={level.title} />
-          )}
-          <div className="aspect-square rounded-xl border-2 border-ink relative overflow-hidden bg-paper">
-            <LevelThumbnail
-              thumbnailUrl={level.thumbnailUrl}
-              previewPage={level.previewPage}
-              alt={level.title}
-            />
-            <button
-              type="button"
-              aria-label={
-                showDraftBadge ? `Edit ${level.title}` : `Preview ${level.title}`
-              }
-              className="absolute bottom-2 right-2 size-9 rounded-full border-2 border-ink bg-white grid place-items-center text-sm"
-            >
-              {showDraftBadge ? "✏️" : "▶"}
-            </button>
-          </div>
-          <div className="px-1 pt-3 pb-1">
-            <h3 className="font-display font-bold text-base truncate">{level.title}</h3>
-            {level.parentId && level.parentTitle && (
-              <p className="text-[11px] text-ink/60 truncate">
-                editing live version
-              </p>
-            )}
-            <div className="flex items-center gap-3 mt-1 text-xs font-semibold flex-wrap">
-              <span className="flex items-center gap-1">
-                <span className="text-brand-coral">♥</span> {formatCount(level.likeCount)}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-brand-green">▶</span> {formatCount(level.playCount)}
-              </span>
-              <RatingDisplay
-                ratingSum={level.ratingSum}
-                ratingCount={level.ratingCount}
-              />
-            </div>
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 function EmptyState({ owner }: { owner: boolean }) {
   if (owner) {
     return (
       <Link
-        href="/ricochet/create"
+        href="/origin/web?mode=edit"
         className="block rounded-2xl border-2 border-dashed border-ink/40 bg-white/50 p-10 text-center hover:bg-white hover:border-ink transition"
       >
         <div className="font-display font-bold text-xl mb-2">No levels yet 👀</div>

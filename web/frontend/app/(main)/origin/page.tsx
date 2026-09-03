@@ -50,7 +50,7 @@ export default async function OriginHubPage() {
             href="/explore"
             className="px-4 h-10 rounded-full border-2 border-ink bg-white font-display font-semibold text-sm flex items-center gap-2 shadow-[3px_3px_0_0_var(--color-ink)] hover:-translate-y-0.5 transition"
           >
-            ✦ All levels
+            ✦ World Levels
           </Link>
           {/* Straight into the editor, same slot and styling as /ricochet's
               Build button. Nothing to install and no sign-in wall: you can

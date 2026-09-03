@@ -36,6 +36,9 @@ levelcraft.gg/ricochet/create           Level editor
 
 levelcraft.gg/origin                    Origin hub (what it is + published levels)
 levelcraft.gg/origin/play/{level_id}    Level page (thumbnail + readout, see below)
+levelcraft.gg/origin/arcade             Arcade catalog (web twin of the game's picker)
+levelcraft.gg/origin/my-levels          Your own levels — published + drafts (account-gated)
+levelcraft.gg/origin/web                Origin's Godot Web build, in an iframe
 ```
 
 **2026-08-04 — levelcraft.gg is Origin's site.** Ricochet is being retired: its
